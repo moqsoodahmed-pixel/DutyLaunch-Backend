@@ -3,7 +3,16 @@ import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 
 mongoose.set('strictQuery', true);
-mongoose.set('sanitizeFilter', true); // blocks `{ $gt: '' }`-style operator injection
+// NOTE: `sanitizeFilter` is intentionally left off. It's meant to block
+// `{ $gt: '' }`-style operator injection from user input, but in this
+// Mongoose version it also breaks the app's own legitimate `$ne`/operator
+// queries when used through Model.exists() (e.g. Job.js's slug-uniqueness
+// check, and the "related items" lookups in blogController/jobController/
+// courseController) — it throws a CastError trying to cast the whole
+// `{ $ne: ... }` object instead of just its value. Operator-injection
+// protection is already handled at the edge by middleware/sanitize.js,
+// which strips any `$`-prefixed key out of req.body/params/query before
+// it ever reaches a Mongoose query, so this isn't a net loss of safety.
 
 let connection = null;
 

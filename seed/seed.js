@@ -21,9 +21,15 @@ const COLLECTIONS = [
   FAQ, BlogPost, Job, JobApplication, Consultation, ContactMessage, Testimonial,
 ];
 
+const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@dutylaunch.com').toLowerCase().trim();
+
 async function destroy() {
   await Promise.all(COLLECTIONS.map((Model) => Model.deleteMany({})));
-  await User.deleteMany({ email: { $ne: process.env.SEED_ADMIN_EMAIL } });
+  // Goes through the raw driver collection, not the Mongoose model, to avoid a
+  // known Mongoose 8.6.x regression where a schema field with `lowercase: true`
+  // (User.email) gets its setter mis-applied to the whole `{ $ne: ... }`
+  // operator object during query casting, throwing a CastError.
+  await User.collection.deleteMany({ email: { $ne: ADMIN_EMAIL } });
   console.log('✔ Collections cleared (the seed admin account was kept)');
 }
 
@@ -31,7 +37,7 @@ async function seed() {
   await destroy();
 
   /* ---- admin ---- */
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@dutylaunch.com';
+  const adminEmail = ADMIN_EMAIL;
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123';
 
   let admin = await User.findOne({ email: adminEmail });
