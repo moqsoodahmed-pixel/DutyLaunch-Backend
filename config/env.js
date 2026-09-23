@@ -6,7 +6,7 @@ const required = ['MONGODB_URI', 'JWT_SECRET'];
 
 const optionalDefaults = {
   NODE_ENV: 'development',
-  PORT: '5000',
+  PORT: '8080',
   CLIENT_URL: 'http://localhost:5173',
   JWT_EXPIRES_IN: '7d',
   JWT_COOKIE_NAME: 'dl_token',
@@ -14,6 +14,14 @@ const optionalDefaults = {
   MAX_UPLOAD_MB: '5',
   RATE_LIMIT_WINDOW_MIN: '15',
   RATE_LIMIT_MAX: '300',
+  GROQ_MODEL: 'openai/gpt-oss-120b',
+  // Comma-separated backups tried, in order, only if GROQ_MODEL itself comes
+  // back as "model does not exist" (Groq's lineup changes over time — these
+  // were confirmed available via GET /v1/models on this project's key).
+  // Skips whisper-*/orpheus-* (speech models) and *-guard-* (moderation
+  // classifiers, not general chat models).
+  GROQ_MODEL_FALLBACKS: 'openai/gpt-oss-20b,qwen/qwen3.8-27b',
+  GROQ_API_URL: 'https://api.groq.com/openai/v1/chat/completions',
 };
 
 /**
@@ -58,6 +66,16 @@ export function loadEnv() {
     maxUploadBytes: Number(process.env.MAX_UPLOAD_MB) * 1024 * 1024,
     rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MIN) * 60 * 1000,
     rateLimitMax: Number(process.env.RATE_LIMIT_MAX),
+    // Free-tier Groq key from https://console.groq.com/keys — the AI Career
+    // Assistant endpoint checks this at request time (not at boot) so the
+    // rest of the API keeps working even before it's configured.
+    groqApiKey: process.env.GROQ_API_KEY || '',
+    groqModel: process.env.GROQ_MODEL,
+    groqModelFallbacks: (process.env.GROQ_MODEL_FALLBACKS || '')
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean),
+    groqApiUrl: process.env.GROQ_API_URL,
   };
 }
 

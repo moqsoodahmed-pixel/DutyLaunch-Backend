@@ -29,6 +29,14 @@ export const resumeLimiter = rateLimit({
   handler: json('You have run several resume checks already. Try again in a few minutes.'),
 });
 
+export const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: json('You are sending messages too quickly. Wait a moment and try again.'),
+});
+
 export const formLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 12,

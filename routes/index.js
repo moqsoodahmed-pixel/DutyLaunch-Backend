@@ -13,6 +13,7 @@ import testimonialRoutes from './testimonialRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import { consultationRouter, contactRouter } from './enquiryRoutes.js';
 import resumeRoutes from './resumeRoutes.js';
+import aiRoutes from './aiRoutes.js';
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use('/consultations', consultationRouter);
 router.use('/contact', contactRouter);
 router.use('/admin', adminRoutes);
 router.use('/resume', resumeRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

@@ -193,3 +193,17 @@ export const statusUpdateSchema = z.object({
 });
 
 export const idParamSchema = z.object({ id: objectId });
+
+/* ---------- ai assistant ---------- */
+export const aiChatSchema = z.object({
+  message: z.string().trim().min(1, 'Say something for the assistant to respond to').max(2000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        text: z.string().trim().max(2000),
+      })
+    )
+    .max(40)
+    .optional(),
+});
