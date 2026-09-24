@@ -6,10 +6,6 @@ import { logger } from './utils/logger.js';
 const start = async () => {
   await connectDB();
 
-<<<<<<< HEAD
-  const server = app.listen(env.port, 'localhost', () => {
-    logger.info(`DutyLaunch API listening on http://localhost:${env.port} (${env.nodeEnv})`);
-=======
   // Bind to 0.0.0.0, NOT localhost. On Railway (and any container host) the
   // platform's proxy connects to the app from outside the container; a server
   // listening on localhost/127.0.0.1 only accepts connections from inside it,
@@ -17,7 +13,6 @@ const start = async () => {
   const host = process.env.HOST && process.env.HOST !== 'localhost' ? process.env.HOST : '0.0.0.0';
   const server = app.listen(env.port, host, () => {
     logger.info(`DutyLaunch API listening on ${host}:${env.port} (${env.nodeEnv})`);
->>>>>>> 2235a2b (updated the server)
   });
 
   const shutdown = async (signal) => {
