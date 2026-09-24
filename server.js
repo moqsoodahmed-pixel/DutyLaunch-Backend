@@ -6,8 +6,8 @@ import { logger } from './utils/logger.js';
 const start = async () => {
   await connectDB();
 
-  const server = app.listen(env.port, () => {
-    logger.info(`DutyLaunch API listening on :${env.port} (${env.nodeEnv})`);
+  const server = app.listen(env.port, 'localhost', () => {
+    logger.info(`DutyLaunch API listening on http://localhost:${env.port} (${env.nodeEnv})`);
   });
 
   const shutdown = async (signal) => {
