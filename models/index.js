@@ -12,3 +12,4 @@ export { Consultation, CONSULTATION_SERVICES, EXPERIENCE_BANDS } from './Consult
 export { ContactMessage } from './ContactMessage.js';
 export { CVPackage } from './CVPackage.js';
 export { ResumeAnalysis } from './ResumeAnalysis.js';
+export { PartnerInstitute, PARTNER_TRACKS, PARTNER_MODES, PARTNER_STATUS } from './PartnerInstitute.js';

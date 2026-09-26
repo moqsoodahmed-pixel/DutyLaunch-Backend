@@ -25,9 +25,11 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 export const registerSchema = z.object({
   name,
   email,
-  phone: phone.optional(),
+  // The form labels phone as optional and sends '' when it's left blank —
+  // accept that, like the profile and consultation schemas already do.
+  phone: phone.optional().or(z.literal('')),
   password,
-  role: z.enum(['user', 'employer']).optional(),
+  role: z.enum(['user', 'employer', 'institute']).optional(),
   company: z
     .object({
       name: z.string().trim().min(2).max(120),
@@ -183,7 +185,7 @@ export const testimonialSchema = z.object({
 });
 
 export const adminUserUpdateSchema = z.object({
-  role: z.enum(['user', 'employer', 'admin']).optional(),
+  role: z.enum(['user', 'employer', 'institute', 'admin']).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -206,4 +208,23 @@ export const aiChatSchema = z.object({
     )
     .max(40)
     .optional(),
+});
+
+/* ---------- partner institutes ---------- */
+const slug = z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid programme');
+
+export const partnerProfileSchema = z.object({
+  name: z.string().trim().min(2, 'Enter your institute name').max(120),
+  track: z.enum(['education', 'courses']),
+  location: z.string().trim().min(2, 'Enter a city, or "Online"').max(80),
+  mode: z.enum(['Online', 'Distance', 'Regular', 'Classroom', 'Hybrid']),
+  about: z.string().trim().max(280, 'Keep it under 280 characters').optional().or(z.literal('')),
+  website: z.string().trim().url('Enter a full URL, starting with https://').max(200).optional().or(z.literal('')),
+  contactPhone: z.string().trim().max(30).optional().or(z.literal('')),
+  programmes: z.array(slug).min(1, 'Choose at least one programme').max(80),
+});
+
+export const partnerStatusSchema = z.object({
+  status: z.enum(['approved', 'rejected', 'pending']),
+  reviewNote: z.string().trim().max(500).optional().or(z.literal('')),
 });

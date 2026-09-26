@@ -6,13 +6,15 @@ export async function registerUser({ name, email, phone, password, role = 'user'
   const exists = await User.findOne({ email });
   if (exists) throw ApiError.conflict('An account with that email already exists');
 
-  // Only `user` and `employer` can be self-registered; admins are seeded or promoted.
-  const safeRole = role === 'employer' ? 'employer' : 'user';
+  // `user`, `employer` and `institute` can be self-registered; admins are
+  // seeded or promoted. An institute account can only edit its own partner
+  // profile, and that profile stays hidden until an admin approves it.
+  const safeRole = ['employer', 'institute'].includes(role) ? role : 'user';
 
   const user = await User.create({
     name,
     email,
-    phone,
+    phone: phone || undefined,
     password,
     role: safeRole,
     ...(safeRole === 'employer' && company ? { company } : {}),

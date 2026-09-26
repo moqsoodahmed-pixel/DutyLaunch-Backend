@@ -14,6 +14,7 @@ import adminRoutes from './adminRoutes.js';
 import { consultationRouter, contactRouter } from './enquiryRoutes.js';
 import resumeRoutes from './resumeRoutes.js';
 import aiRoutes from './aiRoutes.js';
+import partnerRoutes from './partnerRoutes.js';
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use('/contact', contactRouter);
 router.use('/admin', adminRoutes);
 router.use('/resume', resumeRoutes);
 router.use('/ai', aiRoutes);
+router.use('/partners', partnerRoutes);
 
 export default router;

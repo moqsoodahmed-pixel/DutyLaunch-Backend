@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-export const ROLES = ['user', 'employer', 'admin'];
+// 'institute' = a college / training company that manages a partner profile.
+export const ROLES = ['user', 'employer', 'institute', 'admin'];
 
 const profileSchema = new mongoose.Schema(
   {
