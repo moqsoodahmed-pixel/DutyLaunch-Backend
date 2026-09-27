@@ -16,8 +16,8 @@ export const companyProfile = {
   contact: {
     email: 'hello@dutylaunch.com',
     supportEmail: 'support@dutylaunch.com',
-    phone: '+91 84588 45826',
-    whatsapp: '+91 84588 45826',
+    phone: '+91 85488 45826',
+    whatsapp: '+91 85488 45826',
     address: '#63, Office No. 224 & 225, 2nd Floor, The Plazzo Mall, Ibrahim Sahib St, Off Commercial Street, Bangalore – 560001',
     mapUrl: 'https://maps.app.goo.gl/BCNfdV7j5PEBkYrM6',
     hours: 'Monday to Saturday, 10:00 – 19:00 IST',
