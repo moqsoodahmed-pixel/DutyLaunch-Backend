@@ -1,3 +1,4 @@
+import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, paginationMeta } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -45,6 +46,7 @@ export const applyToJob = asyncHandler(async (req, res) => {
     resumeKey: storage.keyFromUpload(req.file, 'resumes'),
     resumeName: req.file.originalname,
     coverLetter: req.body.coverLetter,
+    consent: consentRecord(req),
   });
 
   sendSuccess(res, {

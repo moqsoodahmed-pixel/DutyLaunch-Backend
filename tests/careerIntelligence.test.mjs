@@ -686,3 +686,42 @@ test('scoring override: bad sums, unknown keys and out-of-range values are rejec
 
   assert.equal(validateScoringOverride({}).ok, false, 'an empty override is not a configuration');
 });
+
+/* ================================================================== *
+ * DPDP consent — enforced on the server, not just by a checkbox.
+ * ================================================================== */
+
+import { contactSchema, consultationSchema, applicationSchema, careerParseSchema } from '../validators/schemas.js';
+import { requireConsent, consentRecord, CONSENT_VERSION } from '../utils/consent.js';
+
+test('forms are rejected without consent and accepted with it', () => {
+  const contact = { name: 'Asha Rao', email: 'asha@example.com', subject: 'CV help', message: 'I would like help with my CV.' };
+  assert.equal(contactSchema.safeParse(contact).success, false, 'missing consent must fail');
+  assert.equal(contactSchema.safeParse({ ...contact, consent: false }).success, false, 'unticked must fail');
+  const ok = contactSchema.safeParse({ ...contact, consent: true });
+  assert.equal(ok.success, true);
+  assert.equal(ok.data.consent, true);
+
+  // Multipart forms send strings.
+  assert.equal(applicationSchema.safeParse({ consent: 'true' }).success, true);
+  assert.equal(applicationSchema.safeParse({ consent: 'false' }).success, false);
+  assert.equal(careerParseSchema.safeParse({ text: 'cv' }).success, false);
+  assert.equal(consultationSchema.shape.consent !== undefined, true);
+});
+
+test('upload routes without a schema are blocked by requireConsent', () => {
+  let err;
+  requireConsent({ body: {} }, null, (e) => { err = e; });
+  assert.equal(err?.statusCode, 400);
+  requireConsent({ body: { consent: 'true' } }, null, (e) => { err = e; });
+  assert.equal(err, undefined);
+});
+
+test('the stored consent record says what was agreed, when and which version', () => {
+  const rec = consentRecord({ ip: '1.2.3.4', get: () => 'test-agent' });
+  assert.equal(rec.given, true);
+  assert.equal(rec.version, CONSENT_VERSION);
+  assert.match(rec.text, /Terms & Conditions and Privacy Policy/);
+  assert.ok(rec.at instanceof Date);
+  assert.equal(rec.ip, '1.2.3.4');
+});

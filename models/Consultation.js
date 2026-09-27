@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { consentRecordSchema } from '../utils/consent.js';
 
 export const CONSULTATION_SERVICES = [
   'Career services',
@@ -15,6 +16,8 @@ export const EXPERIENCE_BANDS = ['Student', '0-3 years', '4-7 years', '8-14 year
 
 const consultationSchema = new mongoose.Schema(
   {
+    /* DPDP Act 2023: proof of consent for this submission. */
+    consent: { type: consentRecordSchema, default: undefined },
     name: { type: String, required: true, trim: true, maxlength: 80 },
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
     phone: { type: String, required: true, trim: true, maxlength: 20 },

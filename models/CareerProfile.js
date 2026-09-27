@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { consentRecordSchema } from '../utils/consent.js';
 
 /**
  * The Master Career Profile (spec §3 / §43).
@@ -120,6 +121,8 @@ const careerProfileSchema = new mongoose.Schema(
 
     /* Consent, recorded explicitly rather than assumed (spec §35, §39). */
     consent: {
+      /* DPDP Act 2023: consent given when the CV was uploaded. */
+      dataProcessing: { type: consentRecordSchema, default: undefined },
       aiProcessing: { type: Boolean, default: false },
       aiProcessingAt: Date,
       analytics: { type: Boolean, default: false },

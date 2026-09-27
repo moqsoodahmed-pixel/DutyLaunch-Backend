@@ -1,3 +1,4 @@
+import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, paginationMeta } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -33,6 +34,7 @@ export const uploadResume = asyncHandler(async (req, res) => {
   user.profile.resumeKey = storage.keyFromUpload(req.file, 'resumes');
   user.profile.resumeName = req.file.originalname;
   user.profile.resumeUpdatedAt = new Date();
+  user.profile.resumeConsent = consentRecord(req);
   await user.save();
 
   if (previousKey) await storage.remove(previousKey);

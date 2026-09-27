@@ -1,3 +1,4 @@
+import { requireConsent } from '../utils/consent.js';
 import { Router } from 'express';
 import * as user from '../controllers/userController.js';
 import { protect } from '../middleware/auth.js';
@@ -10,7 +11,7 @@ router.use(protect);
 
 router.get('/profile', user.getProfile);
 router.patch('/profile', validate(updateProfileSchema), user.updateProfile);
-router.post('/profile/resume', uploadResume.single('resume'), user.uploadResume);
+router.post('/profile/resume', uploadResume.single('resume'), requireConsent, user.uploadResume);
 router.get('/profile/resume', user.downloadMyResume);
 
 router.get('/applications', user.getMyApplications);

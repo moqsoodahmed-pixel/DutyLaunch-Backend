@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { consentRecordSchema } from '../utils/consent.js';
 import bcrypt from 'bcryptjs';
 
 // 'institute' = a college / training company that manages a partner profile.
@@ -15,6 +16,8 @@ const profileSchema = new mongoose.Schema(
     resumeKey: { type: String, select: false }, // storage key, never a public URL
     resumeName: { type: String },
     resumeUpdatedAt: { type: Date },
+    /* DPDP Act 2023: consent given with the latest CV upload. */
+    resumeConsent: { type: consentRecordSchema, default: undefined },
   },
   { _id: false }
 );

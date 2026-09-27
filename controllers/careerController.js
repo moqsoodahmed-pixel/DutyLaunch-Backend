@@ -1,3 +1,4 @@
+import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -106,6 +107,7 @@ export const parseUpload = asyncHandler(async (req, res) => {
     const doc = await getProfileDoc(req.user._id, { create: true });
 
     doc.master = resume;
+    doc.consent = { ...(doc.consent?.toObject?.() || doc.consent || {}), dataProcessing: consentRecord(req) };
     doc.touchRetention();
 
     // The original is stored once and never replaced, so there is always

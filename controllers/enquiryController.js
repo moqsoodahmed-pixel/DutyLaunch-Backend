@@ -1,3 +1,4 @@
+import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, paginationMeta } from '../utils/apiResponse.js';
 import { Consultation, ContactMessage } from '../models/index.js';
@@ -6,7 +7,7 @@ import { findOneOrFail } from '../services/contentService.js';
 import { logger } from '../utils/logger.js';
 
 export const createConsultation = asyncHandler(async (req, res) => {
-  const consultation = await Consultation.create(req.body);
+  const consultation = await Consultation.create({ ...req.body, consent: consentRecord(req) });
   logger.info(`New consultation request #${consultation._id} (${consultation.service})`);
   sendSuccess(res, {
     statusCode: 201,
@@ -16,7 +17,7 @@ export const createConsultation = asyncHandler(async (req, res) => {
 });
 
 export const createContactMessage = asyncHandler(async (req, res) => {
-  const message = await ContactMessage.create(req.body);
+  const message = await ContactMessage.create({ ...req.body, consent: consentRecord(req) });
   sendSuccess(res, {
     statusCode: 201,
     message: 'Message sent. We reply within one working day.',

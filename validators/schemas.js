@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { consentField } from '../utils/consent.js';
 import { CONSULTATION_SERVICES, EXPERIENCE_BANDS } from '../models/Consultation.js';
 import { JOB_TYPES, JOB_STATUS, WORK_MODES } from '../models/Job.js';
 import { APPLICATION_STATUS } from '../models/JobApplication.js';
@@ -82,6 +83,7 @@ export const consultationSchema = z.object({
   experience: z.enum(EXPERIENCE_BANDS),
   message: z.string().trim().max(2000).optional().or(z.literal('')),
   preferredSlot: z.string().trim().max(80).optional().or(z.literal('')),
+  consent: consentField,
 });
 
 export const contactSchema = z.object({
@@ -90,6 +92,7 @@ export const contactSchema = z.object({
   phone: phone.optional().or(z.literal('')),
   subject: z.string().trim().min(3, 'Add a short subject').max(140),
   message: z.string().trim().min(10, 'Tell us a little more').max(2000),
+  consent: consentField,
 });
 
 /* ---------- jobs ---------- */
@@ -123,6 +126,7 @@ export const jobSchema = z.object({
 
 export const applicationSchema = z.object({
   coverLetter: z.string().trim().max(4000).optional().or(z.literal('')),
+  consent: consentField,
 });
 
 export const applicationStatusSchema = z.object({
@@ -274,6 +278,7 @@ const resumeContext = {
 export const careerParseSchema = z.object({
   // Multipart uploads arrive on req.file; pasted text arrives here.
   text: z.string().trim().max(200000).optional(),
+  consent: consentField,
 });
 
 export const careerAnalyzeSchema = z.object({

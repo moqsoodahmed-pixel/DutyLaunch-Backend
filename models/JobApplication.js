@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { consentRecordSchema } from '../utils/consent.js';
 
 export const APPLICATION_STATUS = [
   'submitted',
@@ -12,6 +13,8 @@ export const APPLICATION_STATUS = [
 
 const applicationSchema = new mongoose.Schema(
   {
+    /* DPDP Act 2023: proof of consent for this submission. */
+    consent: { type: consentRecordSchema, default: undefined },
     job: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true, index: true },
     candidate: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     employer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
