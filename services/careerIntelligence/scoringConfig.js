@@ -179,3 +179,63 @@ export function lengthGuidance(seniority, config = DEFAULT_CONFIG) {
 export function countryGuidance(country, config = DEFAULT_CONFIG) {
   return config.countries[country] || config.countries.Other;
 }
+
+/* ------------------------------------------------------------------ *
+ * Admin-editable weights (spec §37)
+ * ------------------------------------------------------------------ */
+
+/** The weight sets an admin may change, with the keys each must contain. */
+export const EDITABLE_WEIGHT_SETS = [
+  { path: ['health', 'weightsWithJd'], label: 'Resume Health — with a job description' },
+  { path: ['health', 'weightsWithoutJd'], label: 'Resume Health — without a job description' },
+  { path: ['match', 'weights'], label: 'Job Match' },
+];
+
+const getPath = (obj, path) => path.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+
+/**
+ * Checks an override before it is stored. Returns { ok, errors, config }
+ * where `config` contains only the editable weight sets.
+ *
+ * Each weight set must use exactly the default keys, every value must be
+ * between 0 and 1, and the set must sum to 1 (±0.01), because the scores
+ * are weighted averages — weights that sum to 1.3 would produce a score
+ * of 130.
+ */
+export function validateScoringOverride(override) {
+  const errors = [];
+  const config = {};
+
+  EDITABLE_WEIGHT_SETS.forEach(({ path, label }) => {
+    const given = getPath(override, path);
+    if (given == null) return;
+
+    const expected = Object.keys(getPath(DEFAULT_CONFIG, path));
+    const keys = Object.keys(given);
+    const unknown = keys.filter((k) => !expected.includes(k));
+    const missingKeys = expected.filter((k) => !keys.includes(k));
+
+    if (unknown.length) errors.push(`${label}: unknown weight(s) ${unknown.join(', ')}.`);
+    if (missingKeys.length) errors.push(`${label}: missing weight(s) ${missingKeys.join(', ')}.`);
+
+    const bad = expected.filter((k) => keys.includes(k) && !(typeof given[k] === 'number' && given[k] >= 0 && given[k] <= 1));
+    if (bad.length) errors.push(`${label}: ${bad.join(', ')} must be a number between 0 and 1.`);
+
+    if (!unknown.length && !missingKeys.length && !bad.length) {
+      const sum = expected.reduce((s, k) => s + given[k], 0);
+      if (Math.abs(sum - 1) > 0.01) {
+        errors.push(`${label}: weights add up to ${Math.round(sum * 100)}%, they must add up to 100%.`);
+      } else {
+        let node = config;
+        path.slice(0, -1).forEach((k) => {
+          node[k] = node[k] || {};
+          node = node[k];
+        });
+        node[path[path.length - 1]] = Object.fromEntries(expected.map((k) => [k, given[k]]));
+      }
+    }
+  });
+
+  if (!errors.length && !Object.keys(config).length) errors.push('Change at least one weight set.');
+  return { ok: errors.length === 0, errors, config };
+}

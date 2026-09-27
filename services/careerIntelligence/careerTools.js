@@ -156,8 +156,72 @@ export async function generateCoverLetter(resume, { profile, jobIntel, keywordRe
     };
   } catch (err) {
     logger.error(`[career-tools] cover letter generation failed: ${err.message}`);
-    throw ApiError.badRequest('Cover letter generation is unavailable right now. Please try again shortly.');
+    return buildCoverLetterFallback(resume, { profile, jobIntel, keywordResult, companyName, hiringManager });
   }
+}
+
+/**
+ * Rule-based cover letter, used when no model is available.
+ *
+ * It is assembled only from text that already exists: the candidate's own
+ * titles, companies and bullets, and the job's own title and keywords.
+ * Keywords are mentioned only when the resume already evidences them
+ * (EXACT or RELATED), so the letter never claims a skill the CV does not
+ * show. Nothing is said about the employer beyond its name.
+ */
+export function buildCoverLetterFallback(resume, { profile, jobIntel, keywordResult, companyName = '', hiringManager = '' }) {
+  // Job titles pulled from a JD heading often carry a location suffix.
+  const jobTitle = String(jobIntel?.role?.jobTitle || 'this role').split(/\s+[—–|]\s+|\s+-\s+/)[0].trim();
+  const at = companyName ? ` at ${companyName}` : '';
+  const roles = resume.experience || [];
+  const current = roles[0];
+  // Whole years only, and none under one year — "0.3 years" undersells a fresher.
+  const years = profile?.yearsOfExperience >= 1 ? Math.floor(profile.yearsOfExperience) : null;
+  const joinList = (items) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`);
+
+  const evidenced = (keywordResult?.keywords || [])
+    .filter((k) => k.status === MATCH.EXACT || k.status === MATCH.RELATED)
+    .map((k) => k.term)
+    // A single generic word ("management") says nothing in a letter.
+    .filter((t) => t && t.trim().includes(' '))
+    .slice(0, 4);
+
+  const bulletsOf = (role) => [...(role?.achievements || []), ...(role?.responsibilities || [])].filter(Boolean);
+  const strip = (s) => String(s).trim().replace(/[.;]+$/, '');
+  const lower = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+
+  const opening = current?.title
+    ? `I am applying for the ${jobTitle} position${at}. I currently work as ${current.title}${current.company ? ` at ${current.company}` : ''}${years ? `, with ${years} ${years === 1 ? 'year' : 'years'} of professional experience` : ''}, and I would like to show how my experience relates to the requirements in the job description.`
+    : `I am applying for the ${jobTitle} position${at}, and I would like to show how my experience relates to the requirements in the job description.`;
+
+  const currentBullets = bulletsOf(current).slice(0, 2).map(strip);
+  const middle = currentBullets.length
+    ? `In my current role I ${currentBullets.map(lower).join(', and ')}.`
+    : (resume.projects || []).length
+      ? `Most recently I worked on ${(resume.projects || []).slice(0, 2).map((p) => p.name || p.title).filter(Boolean).join(' and ')}.`
+      : '';
+
+  const previous = roles[1];
+  const previousBullet = bulletsOf(previous).map(strip)[0];
+  const second = evidenced.length
+    ? `The role calls for ${joinList(evidenced)}, which are areas my resume already demonstrates${previous && previousBullet ? ` — for example, as ${previous.title}${previous.company ? ` at ${previous.company}` : ''}, I ${lower(previousBullet)}` : ''}.`
+    : previous && previousBullet
+      ? `Before that, as ${previous.title}${previous.company ? ` at ${previous.company}` : ''}, I ${lower(previousBullet)}.`
+      : '';
+
+  const close = 'I would welcome the chance to discuss how this experience fits your team. Thank you for considering my application.';
+
+  return {
+    engine: 'rules',
+    engineNote:
+      'AI generation is unavailable right now, so this draft is assembled directly from your own resume lines and the job description. Edit it before sending.',
+    salutation: hiringManager ? `Dear ${hiringManager},` : 'Dear Hiring Manager,',
+    body: [opening, middle, second, close].filter(Boolean).join('\n\n'),
+    closing: 'Yours sincerely,',
+    subjectLine: `Application: ${jobTitle}${companyName ? ` — ${companyName}` : ''}`,
+    candidateName: resume.personal?.name || '',
+    note: 'This letter references only your own resume and the job description. No claims are made about the employer.',
+  };
 }
 
 /* ------------------------------------------------------------------ *

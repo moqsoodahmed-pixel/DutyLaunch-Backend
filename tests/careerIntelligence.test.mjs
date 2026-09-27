@@ -612,3 +612,77 @@ test('the evidence vocabulary is the one the spec defines', () => {
   assert.deepEqual(Object.values(EVIDENCE).sort(), ['INFERRED', 'MISSING', 'UNVERIFIED', 'VERIFIED']);
   assert.deepEqual(Object.values(MATCH).sort(), ['EXACT', 'MISSING', 'POSSIBLE', 'RELATED']);
 });
+
+/* ================================================================== *
+ * Cover letter fallback (spec §25) — must work with no model, and must
+ * not invent employer facts or unevidenced skills.
+ * ================================================================== */
+
+import { generateCoverLetter } from '../services/careerIntelligence/careerTools.js';
+
+test('cover letter falls back to an evidence-only draft when no model is configured', async () => {
+  delete process.env.GROQ_API_KEY;
+  const resume = parse(F.TEN_YEARS_MANAGER);
+  const a = analyzeCandidate(resume, { jobDescription: F.JD_OPERATIONS_MANAGER });
+  const letter = await generateCoverLetter(resume, {
+    profile: a.profile,
+    jobIntel: a.jobIntel,
+    keywordResult: a.keywords,
+    company: 'Acme Logistics',
+  });
+
+  assert.equal(letter.engine, 'rules');
+  assert.ok(letter.body.length > 150, 'draft should be substantive');
+  assert.match(letter.body, /Acme Logistics/);
+  assert.doesNotMatch(letter.body, /admire|mission|culture|reputation|industry leader/i);
+
+  // Every keyword the letter claims must be one the resume evidences.
+  const missing = a.keywords.keywords.filter((k) => k.status === MATCH.MISSING).map((k) => k.term);
+  const claimsLine = letter.body.split('\n\n').find((p) => p.startsWith('The role calls for')) || '';
+  missing.forEach((term) => assert.ok(!claimsLine.includes(term), `claimed unevidenced skill: ${term}`));
+});
+
+test('export is blocked when a metric is not in the original CV', () => {
+  const baseline = parse(F.TEN_YEARS_MANAGER);
+  const a = analyzeCandidate(baseline, { jobDescription: F.JD_OPERATIONS_MANAGER });
+  const ctx = { health: a.health, jobIntel: a.jobIntel, keywordResult: a.keywords, profile: a.profile };
+
+  // The unchanged CV must not be blocked by the fact check.
+  const clean = runQualityControl(baseline, baseline, { ...ctx, confirmedFacts: [] });
+  assert.equal(clean.checks.find((c) => c.id === 'fact').passed, true);
+
+  // Add a metric that exists nowhere in the original.
+  const inflated = JSON.parse(JSON.stringify(baseline));
+  const claim = 'Grew regional revenue by 340% across 14 countries';
+  inflated.experience[0].achievements = [...(inflated.experience[0].achievements || []), claim];
+
+  const qc = runQualityControl(inflated, baseline, { ...ctx, confirmedFacts: [] });
+  assert.equal(qc.exportBlocked, true, 'an invented metric must block export');
+  assert.ok(qc.blockingIssues.length > 0);
+  assert.equal(qc.checks.find((c) => c.id === 'fact').passed, false);
+});
+
+import { validateScoringOverride, resolveConfig, DEFAULT_CONFIG } from '../services/careerIntelligence/scoringConfig.js';
+
+test('scoring override: valid weights are accepted and merged over defaults', () => {
+  const weights = { ...DEFAULT_CONFIG.match.weights, skills: 0.37, location: 0 };
+  const { ok, config } = validateScoringOverride({ match: { weights } });
+  assert.equal(ok, true);
+  const merged = resolveConfig(config);
+  assert.equal(merged.match.weights.skills, 0.37);
+  assert.deepEqual(merged.health, DEFAULT_CONFIG.health, 'untouched sets keep defaults');
+});
+
+test('scoring override: bad sums, unknown keys and out-of-range values are rejected', () => {
+  const tooHigh = validateScoringOverride({ match: { weights: { ...DEFAULT_CONFIG.match.weights, skills: 0.9 } } });
+  assert.equal(tooHigh.ok, false);
+  assert.match(tooHigh.errors.join(' '), /100%/);
+
+  const unknown = validateScoringOverride({ match: { weights: { ...DEFAULT_CONFIG.match.weights, salary: 0 } } });
+  assert.equal(unknown.ok, false);
+
+  const negative = validateScoringOverride({ match: { weights: { ...DEFAULT_CONFIG.match.weights, skills: -0.1, keywords: 0.64 } } });
+  assert.equal(negative.ok, false);
+
+  assert.equal(validateScoringOverride({}).ok, false, 'an empty override is not a configuration');
+});

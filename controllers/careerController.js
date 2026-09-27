@@ -155,7 +155,9 @@ export const analyze = asyncHandler(async (req, res) => {
     configOverride: override,
   });
 
-  if (doc) {
+  const record = req.body?.record !== false;
+
+  if (doc && record) {
     doc.profile = analysis.profile;
     doc.lastAnalyzedAt = new Date();
     doc.touchRetention();
@@ -164,7 +166,7 @@ export const analyze = asyncHandler(async (req, res) => {
 
   // Keeps the existing ATS history feature working, now fed by the
   // richer engine rather than the old heuristic scorer.
-  if (req.user) {
+  if (req.user && record) {
     await ResumeAnalysis.create({
       user: req.user._id,
       fileName: resume._source?.fileName || 'career-profile',
@@ -602,7 +604,9 @@ export const exportResume = asyncHandler(async (req, res) => {
 
   if (qc.exportBlocked && !req.body?.acknowledgeIssues) {
     throw ApiError.badRequest(
-      `${qc.blockingIssues.length} issue${qc.blockingIssues.length === 1 ? '' : 's'} need your confirmation before export: ${qc.blockingIssues.map((i) => i.label).join(', ')}.`
+      `${qc.blockingIssues.length} issue${qc.blockingIssues.length === 1 ? '' : 's'} need your confirmation before export: ${qc.blockingIssues.map((i) => i.label).join(', ')}.`,
+      // Structured copy so the client can list the issues, not just show one sentence.
+      qc.blockingIssues.map((i) => ({ field: 'integrity', message: i.label, detail: i.detail }))
     );
   }
 

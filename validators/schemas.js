@@ -276,7 +276,12 @@ export const careerParseSchema = z.object({
   text: z.string().trim().max(200000).optional(),
 });
 
-export const careerAnalyzeSchema = z.object(resumeContext);
+export const careerAnalyzeSchema = z.object({
+  ...resumeContext,
+  /* false = a read-only preview (e.g. the match on a job page), which
+     must not add to the candidate's analysis history. */
+  record: z.boolean().optional(),
+});
 
 export const careerJobAnalyzeSchema = z
   .object({
