@@ -15,11 +15,11 @@ export const companyProfile = {
   tagline: 'A career, education and global-mobility platform.',
   contact: {
     email: 'hello@dutylaunch.com',
-    supportEmail: 'support@dutylaunch.com',
+    supportEmail: 'support@dutylaunch.in',
     phone: '+91 85488 45826',
     whatsapp: '+91 85488 45826',
-    address: '#63, Office No. 224 & 225, 2nd Floor, The Plazzo Mall, Ibrahim Sahib St, Off Commercial Street, Bangalore – 560001',
-    mapUrl: 'https://maps.app.goo.gl/BCNfdV7j5PEBkYrM6',
+    address: 'Plazzo Retail Mall, Ibrahim Sahib St, Bharati Nagar, Shivaji Nagar, Bengaluru, Karnataka 560001',
+    mapUrl: 'https://www.google.com/maps/place/DutyLaunch/@12.983623,77.6094233,17z/data=!4m6!3m5!1s0x3bae17cc3757987d:0xfba9cd46257832ef!8m2!3d12.983623!4d77.6094233!16s%2Fg%2F11p19s05hm',
     hours: 'Monday to Saturday, 10:00 – 19:00 IST',
   },
   pillars: [
