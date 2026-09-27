@@ -228,3 +228,165 @@ export const partnerStatusSchema = z.object({
   status: z.enum(['approved', 'rejected', 'pending']),
   reviewNote: z.string().trim().max(500).optional().or(z.literal('')),
 });
+
+/* ------------------------------------------------------------------ *
+ * Career Intelligence (resume optimizer + career platform)
+ *
+ * The Resume JSON itself is validated by the engine's own zod contract
+ * in services/careerIntelligence/resumeSchema.js, which is the single
+ * source of truth for that shape. These schemas guard the *request*
+ * envelope: the scalars around the resume, so bad input is rejected at
+ * the edge instead of deep inside the engine.
+ * ------------------------------------------------------------------ */
+
+const resumePayload = z.record(z.any());
+
+const jobHints = z
+  .object({
+    jobTitle: z.string().trim().max(160).optional(),
+    company: z.string().trim().max(160).optional(),
+    industry: z.string().trim().max(120).optional(),
+    seniority: z.string().trim().max(60).optional(),
+    country: z.string().trim().max(60).optional(),
+    location: z.string().trim().max(120).optional(),
+  })
+  .partial()
+  .optional();
+
+/* A JD can legitimately be long; cap it so one paste cannot exhaust the
+   request body limit or the AI context. */
+const jobDescription = z.string().trim().max(30000, 'That job description is unusually long — paste the role details only').optional();
+
+const templateId = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9-]{3,40}$/, 'Unknown template')
+  .optional();
+
+/** Shared by every endpoint that operates on "some resume". */
+const resumeContext = {
+  resume: resumePayload.optional(),
+  versionId: objectId.optional(),
+  jobDescription,
+  jobHints,
+};
+
+export const careerParseSchema = z.object({
+  // Multipart uploads arrive on req.file; pasted text arrives here.
+  text: z.string().trim().max(200000).optional(),
+});
+
+export const careerAnalyzeSchema = z.object(resumeContext);
+
+export const careerJobAnalyzeSchema = z
+  .object({
+    jobDescription,
+    jobTitle: z.string().trim().max(160).optional(),
+    jobHints,
+  })
+  .refine((v) => Boolean(v.jobDescription || v.jobTitle), {
+    message: 'Paste a job description, or give us a job title to work from',
+    path: ['jobDescription'],
+  });
+
+export const careerProfileUpdateSchema = z.object({
+  resume: resumePayload.optional(),
+  preferences: z
+    .object({
+      targetRoles: z.array(z.string().trim().max(120)).max(20).optional(),
+      targetIndustries: z.array(z.string().trim().max(120)).max(20).optional(),
+      preferredLocations: z.array(z.string().trim().max(120)).max(20).optional(),
+      country: z.string().trim().max(60).optional(),
+      careerGoals: z.string().trim().max(1000).optional(),
+      learningGoals: z.string().trim().max(1000).optional(),
+      openToRelocation: z.boolean().optional(),
+      noticePeriod: z.string().trim().max(60).optional(),
+    })
+    .partial()
+    .optional(),
+  /* Consent is explicit and per-purpose (spec §39). Anything absent is
+     left at its stored value rather than silently defaulted to true. */
+  consent: z
+    .object({
+      aiProcessing: z.boolean().optional(),
+      analytics: z.boolean().optional(),
+      modelTraining: z.boolean().optional(),
+    })
+    .partial()
+    .optional(),
+});
+
+export const careerEvidenceQuestionsSchema = z.object(resumeContext);
+
+export const careerEvidenceAnswerSchema = z.object({
+  question: z.object({
+    id: z.string().trim().min(1, 'Which question is this answering?').max(120),
+    keyword: z.string().trim().max(120).optional(),
+    prompt: z.string().trim().max(500).optional(),
+    kind: z.string().trim().max(60).optional(),
+    context: z.record(z.any()).optional(),
+  }),
+  answers: z.record(z.union([z.string().max(2000), z.number(), z.boolean(), z.null()])).optional(),
+});
+
+export const careerOptimizeSchema = z.object({
+  ...resumeContext,
+  scope: z.enum(['all', 'summary', 'experience', 'skills']).optional(),
+});
+
+export const careerApplyOptimizationSchema = z.object({
+  ...resumeContext,
+  proposals: z.array(z.record(z.any())).min(1, 'Send the proposals you reviewed').max(200),
+  decisions: z
+    .array(
+      z.object({
+        id: z.string().trim().max(120),
+        action: z.enum(['accept', 'edit', 'reject']),
+        text: z.string().max(4000).optional(),
+      })
+    )
+    .max(200)
+    .optional(),
+});
+
+export const careerVersionCreateSchema = z.object({
+  ...resumeContext,
+  label: z.string().trim().max(120).optional(),
+  kind: z.enum(['optimized', 'targeted', 'manual']).optional(),
+  templateId,
+  jobId: objectId.optional(),
+});
+
+export const careerVersionUpdateSchema = z.object({
+  resume: resumePayload.optional(),
+  label: z.string().trim().max(120).optional(),
+  templateId,
+});
+
+export const careerRenderSchema = z.object({ ...resumeContext, templateId });
+
+export const careerExportSchema = z.object({
+  ...resumeContext,
+  templateId,
+  /* Export is refused while a high-severity integrity finding stands.
+     The candidate can proceed only by acknowledging it explicitly. */
+  acknowledgeIssues: z.boolean().optional(),
+});
+
+export const careerCoverLetterSchema = z.object({
+  ...resumeContext,
+  company: z.string().trim().max(160).optional(),
+  hiringManager: z.string().trim().max(120).optional(),
+  tone: z.enum(['professional', 'warm', 'direct']).optional(),
+});
+
+export const careerToolSchema = z.object(resumeContext);
+
+export const scoringConfigSchema = z.object({
+  name: z.string().trim().min(2, 'Name this configuration').max(120),
+  notes: z.string().trim().max(2000).optional().or(z.literal('')),
+  active: z.boolean().optional(),
+  /* A partial override, deep-merged over the defaults in code — so one
+     weight can be changed without restating the whole tree. */
+  config: z.record(z.any()),
+});

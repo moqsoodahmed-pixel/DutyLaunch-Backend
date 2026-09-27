@@ -2,15 +2,18 @@
   "name": "dutylaunch-server",
   "version": "1.0.0",
   "private": true,
-  "description": "DutyLaunch REST API — career, education and global mobility platform",
+  "description": "DutyLaunch REST API \u2014 career, education and global mobility platform",
   "type": "module",
   "main": "server.js",
-  "engines": { "node": ">=18.18.0" },
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed": "node seed/seed.js",
-    "seed:destroy": "node seed/seed.js --destroy"
+    "seed:destroy": "node seed/seed.js --destroy",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

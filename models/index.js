@@ -13,3 +13,5 @@ export { ContactMessage } from './ContactMessage.js';
 export { CVPackage } from './CVPackage.js';
 export { ResumeAnalysis } from './ResumeAnalysis.js';
 export { PartnerInstitute, PARTNER_TRACKS, PARTNER_MODES, PARTNER_STATUS } from './PartnerInstitute.js';
+export { CareerProfile, VERSION_KINDS } from './CareerProfile.js';
+export { ScoringConfig } from './ScoringConfig.js';

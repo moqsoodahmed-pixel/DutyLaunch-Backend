@@ -15,6 +15,7 @@ import { consultationRouter, contactRouter } from './enquiryRoutes.js';
 import resumeRoutes from './resumeRoutes.js';
 import aiRoutes from './aiRoutes.js';
 import partnerRoutes from './partnerRoutes.js';
+import careerRoutes from './careerRoutes.js';
 
 const router = Router();
 
@@ -39,5 +40,6 @@ router.use('/admin', adminRoutes);
 router.use('/resume', resumeRoutes);
 router.use('/ai', aiRoutes);
 router.use('/partners', partnerRoutes);
+router.use('/career', careerRoutes);
 
 export default router;

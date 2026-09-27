@@ -72,3 +72,24 @@ export const uploadResumeMemory = multer({
     return cb(null, true);
   },
 });
+
+/**
+ * Career Intelligence parser input. Same in-memory handling, but the
+ * structured parser also accepts plain text (spec §4: PDF, DOCX, TXT), so
+ * a candidate whose CV lives in a Google Doc can paste-and-save rather
+ * than being told to re-export it.
+ */
+const CI_TYPES = [...DOC_TYPES, 'text/plain'];
+const CI_EXTENSIONS = [...RESUME_EXTENSIONS, '.txt'];
+
+export const uploadCvMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.maxUploadBytes, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!CI_TYPES.includes(file.mimetype) || !CI_EXTENSIONS.includes(ext)) {
+      return cb(ApiError.badRequest('Please upload a PDF, DOCX, DOC or TXT file.'));
+    }
+    return cb(null, true);
+  },
+});
