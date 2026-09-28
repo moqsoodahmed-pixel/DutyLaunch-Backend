@@ -75,3 +75,29 @@ export const moderateJob = asyncHandler(async (req, res) => {
   await job.save();
   sendSuccess(res, { message: `Job ${job.status}`, data: job });
 });
+
+export const listResumeChecks = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req.query, { defaultLimit: 25 });
+  const filter = {};
+  if (req.query.q) {
+    filter.fileName = new RegExp(escapeRegex(req.query.q), 'i');
+  }
+  if (req.query.hasUser === 'true')  filter.user  = { $ne: null };
+  if (req.query.hasUser === 'false') filter.user  = null;
+
+  const [items, total] = await Promise.all([
+    ResumeAnalysis.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('user', 'name email')
+      .lean(),
+    ResumeAnalysis.countDocuments(filter),
+  ]);
+
+  sendSuccess(res, {
+    message: 'Resume checks',
+    data: items,
+    meta: paginationMeta({ page, limit, total }),
+  });
+});

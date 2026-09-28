@@ -15,6 +15,7 @@ router.patch('/users/:id', validate(adminUserUpdateSchema), admin.updateUser);
 router.get('/jobs', admin.listAllJobs);
 router.patch('/jobs/:id/moderate', admin.moderateJob);
 router.get('/applications', admin.listAllApplications);
+router.get('/resume-checks', admin.listResumeChecks);
 router.get('/partners', partners.adminList);
 router.patch('/partners/:id/status', validate(partnerStatusSchema), partners.adminSetStatus);
 
