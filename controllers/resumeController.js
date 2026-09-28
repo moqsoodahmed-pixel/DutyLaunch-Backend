@@ -11,6 +11,7 @@ export const analyzeResume = asyncHandler(async (req, res) => {
   const result = await analyzeResumeFile({
     buffer: req.file.buffer,
     mimetype: req.file.mimetype,
+    originalname: req.file.originalname,
   });
 
   const record = await ResumeAnalysis.create({
@@ -34,6 +35,7 @@ export const analyzeResume = asyncHandler(async (req, res) => {
       strengths: result.strengths,
       weaknesses: result.weaknesses,
       recommendations: result.recommendations,
+      suggested: result.suggested || null,
       createdAt: record.createdAt,
     },
   });

@@ -60,6 +60,7 @@ export function loadEnv() {
       .map((u) => u.trim())
       .filter(Boolean),
     jwtSecret: process.env.JWT_SECRET,
+    magicalApiKey: process.env.MAGICAL_API_KEY || null,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN,
     jwtCookieName: process.env.JWT_COOKIE_NAME,
     uploadDir: process.env.UPLOAD_DIR,
