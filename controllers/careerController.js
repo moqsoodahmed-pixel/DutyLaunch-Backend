@@ -5,6 +5,26 @@ import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { CareerProfile, ScoringConfig, ResumeAnalysis } from '../models/index.js';
 import { env } from '../config/env.js';
+import {
+  parseResumeFile,
+  parseResumeText,
+  parseResumeJson,
+  applyEdit,
+  analyzeCandidate,
+  analyzeJobDescription,
+  deriveTargetedResume,
+  proposeRewrites,
+  applyDecisions,
+  buildComparison,
+  runQualityControl,
+  generateEvidenceQuestions,
+  buildAchievementBullet,
+  toConfirmedFacts,
+  renderResume,
+  listTemplates,
+  suggestTemplate,
+} from '../services/careerIntelligence/index.js';
+import { generateLinkedIn, generateCoverLetter, generateInterviewPrep } from '../services/careerIntelligence/careerTools.js';
 
 /* ------------------------------------------------------------------ *
  * MagicalAPI Resume Checker
