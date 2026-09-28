@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -6,75 +7,126 @@ import { CareerProfile, ScoringConfig, ResumeAnalysis } from '../models/index.js
 import { env } from '../config/env.js';
 
 /* ------------------------------------------------------------------ *
- * MagicalAPI — inlined here to avoid a circular/missing export issue.
- * Sends the resume file to MagicalAPI and returns a normalised score
- * object.  Returns null on any failure so the caller can fall back
- * gracefully to the internal engine.
+ * MagicalAPI Resume Checker
+ *
+ * Contract taken from MagicalAPI's official client (magicalapi-python):
+ *   POST https://gw.magicalapi.com/resume-review
+ *   headers: { 'api-key': KEY, 'Content-Type': 'application/json' }
+ *   body:    { url: '<public URL of a PDF>' }
+ *   201 -> { data: { request_id }, usage }  => re-POST with request_id
+ *   200 -> { data: { score, result, suggested }, usage }
+ *
+ * The API reads the resume from a URL, not an upload, so the PDF is
+ * served from this backend at a random single-use link that expires
+ * after a few minutes (see serveTempResume below).
  * ------------------------------------------------------------------ */
-async function analyzeWithMagicalApi({ buffer, mimetype, originalname }) {
-  if (!env.magicalApiKey) return null;
-  try {
-    const form = new FormData();
-    form.append('resume_file', new Blob([buffer], { type: mimetype }), originalname || 'resume.pdf');
-    const res = await fetch('https://api.magicalapi.com/api/v1/resume-review/', {
-      method: 'POST',
-      headers: { 'x-api-key': env.magicalApiKey },
-      body: form,
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!res.ok) {
-      console.warn('[MagicalAPI] non-OK response:', res.status);
-      return null;
-    }
-    const data = await res.json();
-    const r = data.result || {};
-    const sc = (section) => {
-      if (!section) return 50;
-      const p = (section.pros || []).length;
-      const c = (section.cons || []).length;
-      return p + c === 0 ? 50 : Math.round((p / (p + c)) * 100);
-    };
-    return {
-      score: data.score ?? null,
-      categoryScores: {
-        contact:      sc(r.contact),
-        formatting:   sc(r.format),
-        experience:   sc(r.experiences),
-        skills:       sc(r.skills),
-        education:    sc(r.educations),
-        keywords:     Math.round((sc(r.experiences) + sc(r.summary)) / 2),
-        achievements: sc(r.experiences),
-      },
-      strengths:       Object.values(r).flatMap(s => s?.pros || []).slice(0, 6),
-      weaknesses:      Object.values(r).flatMap(s => (s?.cons || []).map(c => c?.message || c)).filter(Boolean).slice(0, 6),
-      recommendations: [...new Set(Object.values(r).flatMap(s => (s?.cons || []).flatMap(c => c?.tips || [])).filter(Boolean))].slice(0, 8),
-      suggested:       data.suggested?.summary?.content || null,
-    };
-  } catch (err) {
-    console.warn('[MagicalAPI] error:', err.message);
+
+const MAGICAL_BASE = 'https://gw.magicalapi.com';
+const TEMP_TTL_MS = 5 * 60 * 1000;
+const tempFiles = new Map();      // token -> { buffer, mimetype, expires }
+const pendingMagical = new Map(); // userId -> Promise<result|null>
+
+function putTempFile(buffer, mimetype) {
+  const now = Date.now();
+  for (const [t, f] of tempFiles) if (f.expires < now) tempFiles.delete(t);
+  const token = crypto.randomBytes(24).toString('hex');
+  tempFiles.set(token, { buffer, mimetype, expires: now + TEMP_TTL_MS });
+  return token;
+}
+
+/** GET /api/career/magical-file/:token — lets MagicalAPI fetch the PDF once. */
+export const serveTempResume = (req, res) => {
+  const token = String(req.params.token || '').replace(/\.pdf$/, '');
+  const file = tempFiles.get(token);
+  if (!file || file.expires < Date.now()) {
+    tempFiles.delete(token);
+    return res.status(404).end();
+  }
+  res.set('Content-Type', file.mimetype);
+  res.set('Cache-Control', 'no-store');
+  res.send(file.buffer);
+};
+
+function publicBaseUrl(req) {
+  return (process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+}
+
+function normaliseMagical(body) {
+  const d = body?.data;
+  if (!d || typeof d.score !== 'number') return null;
+  const r = d.result || {};
+  const sc = (section) => {
+    if (!section) return 50;
+    const p = (section.pros || []).length;
+    const c = (section.cons || []).length;
+    return p + c === 0 ? 50 : Math.round((p / (p + c)) * 100);
+  };
+  return {
+    score: d.score,
+    categoryScores: {
+      contact: sc(r.contact),
+      formatting: sc(r.format),
+      experience: sc(r.experiences),
+      skills: sc(r.skills),
+      education: sc(r.educations),
+      summary: sc(r.summary),
+    },
+    strengths: Object.values(r).flatMap((s) => s?.pros || []).slice(0, 6),
+    weaknesses: Object.values(r).flatMap((s) => (s?.cons || []).map((c) => c?.message)).filter(Boolean).slice(0, 6),
+    recommendations: [...new Set(Object.values(r).flatMap((s) => (s?.cons || []).flatMap((c) => c?.tips || [])))].slice(0, 8),
+    suggested: d.suggested?.summary?.content || null,
+  };
+}
+
+export async function analyzeWithMagicalApi({ buffer, mimetype, baseUrl }) {
+  if (!env.magicalApiKey) {
+    console.warn('[MagicalAPI] MAGICAL_API_KEY is not set — using internal engine.');
     return null;
   }
+  if (mimetype !== 'application/pdf') {
+    console.warn('[MagicalAPI] only PDF resumes are supported — using internal engine for', mimetype);
+    return null;
+  }
+
+  const token = putTempFile(buffer, mimetype);
+  const url = `${baseUrl}/api/career/magical-file/${token}.pdf`;
+  const payload = { url };
+  const deadline = Date.now() + 60_000;
+
+  try {
+    while (Date.now() < deadline) {
+      const res = await fetch(`${MAGICAL_BASE}/resume-review`, {
+        method: 'POST',
+        headers: { 'api-key': env.magicalApiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const text = await res.text();
+      let body = null;
+      try { body = JSON.parse(text); } catch { /* not JSON */ }
+
+      if (res.status === 201 && body?.data?.request_id) {
+        payload.request_id = body.data.request_id; // still processing — poll again
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      if (res.status === 200) {
+        const result = normaliseMagical(body);
+        console.log('[MagicalAPI] score received:', result?.score);
+        return result;
+      }
+      console.warn(`[MagicalAPI] HTTP ${res.status}:`, text.slice(0, 300));
+      return null;
+    }
+    console.warn('[MagicalAPI] timed out after 60s — using internal engine.');
+    return null;
+  } catch (err) {
+    console.warn('[MagicalAPI] request failed:', err.message);
+    return null;
+  } finally {
+    tempFiles.delete(token);
+  }
 }
-import {
-  parseResumeFile,
-  parseResumeText,
-  parseResumeJson,
-  applyEdit,
-  analyzeCandidate,
-  analyzeJobDescription,
-  deriveTargetedResume,
-  proposeRewrites,
-  applyDecisions,
-  buildComparison,
-  runQualityControl,
-  generateEvidenceQuestions,
-  buildAchievementBullet,
-  toConfirmedFacts,
-  renderResume,
-  listTemplates,
-  suggestTemplate,
-} from '../services/careerIntelligence/index.js';
-import { generateLinkedIn, generateCoverLetter, generateInterviewPrep } from '../services/careerIntelligence/careerTools.js';
 
 /* ------------------------------------------------------------------ *
  * Helpers
@@ -143,24 +195,11 @@ export const parseUpload = asyncHandler(async (req, res) => {
   let resume;
 
   if (req.file) {
-    const [parsedResume, magicalResult] = await Promise.all([
-      parseResumeFile({
-        buffer: req.file.buffer,
-        mimetype: req.file.mimetype,
-        fileName: req.file.originalname,
-      }),
-      analyzeWithMagicalApi({
-        buffer: req.file.buffer,
-        mimetype: req.file.mimetype,
-        originalname: req.file.originalname,
-      }).catch((err) => {
-        console.warn('[MagicalAPI] scoring failed, using internal engine:', err.message);
-        return null;
-      }),
-    ]);
-    resume = parsedResume;
-    resume._magicalScore = magicalResult || null;
-    console.log('[MagicalAPI] parse result:', magicalResult ? `score=${magicalResult.score}` : 'null — check MAGICAL_API_KEY env var');
+    resume = await parseResumeFile({
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      fileName: req.file.originalname,
+    });
   } else if (req.body?.text?.trim()) {
     resume = parseResumeText(req.body.text, { fileName: 'pasted.txt', fileType: 'text/plain' });
   } else {
@@ -174,10 +213,9 @@ export const parseUpload = asyncHandler(async (req, res) => {
     doc.master = resume;
     doc.consent = { ...(doc.consent?.toObject?.() || doc.consent || {}), dataProcessing: consentRecord(req) };
     doc.touchRetention();
-    if (resume._magicalScore) {
-      doc.lastMagicalScore = resume._magicalScore;
-      doc.markModified('lastMagicalScore'); // Mongoose needs this for Mixed fields
-    }
+    // A new CV invalidates any MagicalAPI score from a previous upload.
+    doc.lastMagicalScore = null;
+    doc.markModified('lastMagicalScore');
 
     // The original is stored once and never replaced, so there is always
     // a verified baseline to check every later rewrite against.
@@ -191,6 +229,31 @@ export const parseUpload = asyncHandler(async (req, res) => {
     }
 
     await doc.save();
+  }
+
+  // Score with MagicalAPI in the background: the upload returns now, and
+  // /career/analyze waits for this result (up to 15s) before scoring.
+  if (req.file && req.user) {
+    const userId = String(req.user._id);
+    const job = analyzeWithMagicalApi({
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      baseUrl: publicBaseUrl(req),
+    })
+      .then(async (result) => {
+        if (result) {
+          await CareerProfile.updateOne({ user: req.user._id }, { $set: { lastMagicalScore: result } });
+        }
+        return result;
+      })
+      .catch((err) => {
+        console.warn('[MagicalAPI] background job failed:', err.message);
+        return null;
+      })
+      .finally(() => {
+        if (pendingMagical.get(userId) === job) pendingMagical.delete(userId);
+      });
+    pendingMagical.set(userId, job);
   }
 
   sendSuccess(res, {
@@ -226,10 +289,19 @@ export const analyze = asyncHandler(async (req, res) => {
     configOverride: override,
   });
 
-  // Signed-in: MagicalAPI score was persisted on doc during parse.
-  // Anonymous: score is on resume._magicalScore (sent inline by frontend).
-  const magical = doc?.lastMagicalScore || resume._magicalScore || null;
-  console.log('[MagicalAPI] analyze: doc.lastMagicalScore=', doc?.lastMagicalScore?.score, 'resume._magicalScore=', resume._magicalScore?.score);
+  // MagicalAPI score for this user's latest upload. Waits for a job that is
+  // still running, then reads the stored result — this works whether the
+  // frontend sent the resume inline or relied on the saved profile.
+  let magical = null;
+  if (req.user) {
+    const pending = pendingMagical.get(String(req.user._id));
+    if (pending) {
+      await Promise.race([pending, new Promise((r) => setTimeout(r, 15_000))]);
+    }
+    const fresh = await CareerProfile.findOne({ user: req.user._id }).select('lastMagicalScore').lean();
+    magical = fresh?.lastMagicalScore || null;
+  }
+  console.log('[MagicalAPI] analyze using', magical ? `MagicalAPI score ${magical.score}` : 'internal engine');
   if (magical && typeof magical.score === 'number') {
     analysis.health.score = magical.score;
     analysis.health.band = magical.score >= 85
@@ -241,14 +313,18 @@ export const analyze = asyncHandler(async (req, res) => {
           : { label: 'Weak',       tone: 'danger'  };
 
     const mc = magical.categoryScores || {};
+    const avg = (...v) => {
+      const n = v.filter((x) => typeof x === 'number');
+      return n.length ? Math.round(n.reduce((t, x) => t + x, 0) / n.length) : null;
+    };
     const catMap = {
-      atsStructure:        mc.contact   ?? mc.formatting ?? null,
-      achievementStrength: mc.achievements ?? mc.experience ?? null,
-      skillsCoverage:      mc.skills    ?? null,
-      readability:         mc.formatting ?? null,
-      completeness:        mc.education ?? null,
-      keywordAlignment:    mc.keywords  ?? null,
-      experienceRelevance: mc.experience ?? null,
+      atsStructure:        avg(mc.contact, mc.formatting),
+      achievementStrength: avg(mc.experience),
+      skillsCoverage:      avg(mc.skills),
+      readability:         avg(mc.summary, mc.formatting),
+      completeness:        avg(mc.education, mc.contact),
+      keywordAlignment:    avg(mc.experience, mc.summary),
+      experienceRelevance: avg(mc.experience),
     };
     Object.entries(catMap).forEach(([key, val]) => {
       if (val !== null && analysis.health.categories[key]) {
@@ -259,6 +335,8 @@ export const analyze = asyncHandler(async (req, res) => {
     if (magical.strengths?.length)  analysis.health.whatIsStrong           = magical.strengths;
     if (magical.weaknesses?.length) analysis.health.whatNeedsImprovement   = magical.weaknesses;
     if (magical.suggested)          analysis.health.suggestedSummary        = magical.suggested;
+    analysis.health.methodology =
+      'This score is provided by MagicalAPI\u2019s Resume Checker. It is not a guarantee of ATS acceptance or interview success.';
     analysis.health.scoredByMagicalApi = true;
   }
 

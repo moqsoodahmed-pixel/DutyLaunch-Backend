@@ -39,6 +39,9 @@ import {
 
 const router = Router();
 
+/* Single-use link MagicalAPI uses to fetch an uploaded PDF (expires in 5 min). */
+router.get('/magical-file/:token', career.serveTempResume);
+
 /* ---------- upload and parse (§4, §5) ---------- */
 router.post(
   '/resume/parse',
