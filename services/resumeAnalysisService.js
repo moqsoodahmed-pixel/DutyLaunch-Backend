@@ -15,8 +15,6 @@
  * MagicalAPI docs: https://docs.magicalapi.com/
  */
 
-import FormData from 'form-data';
-import fetch from 'node-fetch';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
 import { ApiError } from '../utils/ApiError.js';
@@ -66,22 +64,18 @@ function extractRecommendations(result) {
 }
 
 async function analyzeWithMagicalApi({ buffer, mimetype, originalname }) {
+  // Use Node 18's built-in FormData and fetch — no extra packages needed.
   const form = new FormData();
-  form.append('resume_file', buffer, {
-    filename: originalname || 'resume.pdf',
-    contentType: mimetype,
-  });
+  const blob = new Blob([buffer], { type: mimetype });
+  form.append('resume_file', blob, originalname || 'resume.pdf');
 
   let res;
   try {
     res = await fetch(MAGICAL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'x-api-key': env.magicalApiKey,
-        ...form.getHeaders(),
-      },
+      headers: { 'x-api-key': env.magicalApiKey },
       body: form,
-      timeout: 30_000,
+      signal: AbortSignal.timeout(30_000),
     });
   } catch (err) {
     throw ApiError.internal(`MagicalAPI network error: ${err.message}`);
