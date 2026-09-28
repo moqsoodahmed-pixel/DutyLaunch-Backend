@@ -91,11 +91,23 @@ export const parseUpload = asyncHandler(async (req, res) => {
   let resume;
 
   if (req.file) {
-    resume = await parseResumeFile({
-      buffer: req.file.buffer,
-      mimetype: req.file.mimetype,
-      fileName: req.file.originalname,
-    });
+    const [parsedResume, magicalResult] = await Promise.all([
+      parseResumeFile({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        fileName: req.file.originalname,
+      }),
+      analyzeWithMagicalApi({
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        originalname: req.file.originalname,
+      }).catch((err) => {
+        console.warn('[MagicalAPI] scoring failed, using internal engine:', err.message);
+        return null;
+      }),
+    ]);
+    resume = parsedResume;
+    resume._magicalScore = magicalResult || null;
   } else if (req.body?.text?.trim()) {
     resume = parseResumeText(req.body.text, { fileName: 'pasted.txt', fileType: 'text/plain' });
   } else {
@@ -109,6 +121,7 @@ export const parseUpload = asyncHandler(async (req, res) => {
     doc.master = resume;
     doc.consent = { ...(doc.consent?.toObject?.() || doc.consent || {}), dataProcessing: consentRecord(req) };
     doc.touchRetention();
+    if (resume._magicalScore) doc.lastMagicalScore = resume._magicalScore;
 
     // The original is stored once and never replaced, so there is always
     // a verified baseline to check every later rewrite against.
@@ -156,6 +169,41 @@ export const analyze = asyncHandler(async (req, res) => {
     confirmedFacts: doc?.confirmedFacts || [],
     configOverride: override,
   });
+
+  // Signed-in: MagicalAPI score was persisted on doc during parse.
+  // Anonymous: score is on resume._magicalScore (sent inline by frontend).
+  const magical = doc?.lastMagicalScore || resume._magicalScore || null;
+  if (magical && typeof magical.score === 'number') {
+    analysis.health.score = magical.score;
+    analysis.health.band = magical.score >= 85
+      ? { label: 'Strong',     tone: 'success' }
+      : magical.score >= 70
+        ? { label: 'Good',       tone: 'azure'   }
+        : magical.score >= 50
+          ? { label: 'Needs work', tone: 'amber'   }
+          : { label: 'Weak',       tone: 'danger'  };
+
+    const mc = magical.categoryScores || {};
+    const catMap = {
+      atsStructure:        mc.contact   ?? mc.formatting ?? null,
+      achievementStrength: mc.achievements ?? mc.experience ?? null,
+      skillsCoverage:      mc.skills    ?? null,
+      readability:         mc.formatting ?? null,
+      completeness:        mc.education ?? null,
+      keywordAlignment:    mc.keywords  ?? null,
+      experienceRelevance: mc.experience ?? null,
+    };
+    Object.entries(catMap).forEach(([key, val]) => {
+      if (val !== null && analysis.health.categories[key]) {
+        analysis.health.categories[key].score = val;
+      }
+    });
+
+    if (magical.strengths?.length)  analysis.health.whatIsStrong           = magical.strengths;
+    if (magical.weaknesses?.length) analysis.health.whatNeedsImprovement   = magical.weaknesses;
+    if (magical.suggested)          analysis.health.suggestedSummary        = magical.suggested;
+    analysis.health.scoredByMagicalApi = true;
+  }
 
   const record = req.body?.record !== false;
 

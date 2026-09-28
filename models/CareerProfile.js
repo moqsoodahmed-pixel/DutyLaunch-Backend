@@ -138,6 +138,10 @@ const careerProfileSchema = new mongoose.Schema(
     retainUntil: { type: Date },
 
     lastAnalyzedAt: Date,
+
+    /* MagicalAPI score from the most recent file upload. Persisted here
+       so /career/analyze can use it without the file being present. */
+    lastMagicalScore: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true }
 );
