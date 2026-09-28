@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { CareerProfile, ScoringConfig, ResumeAnalysis } from '../models/index.js';
+import { analyzeWithMagicalApi } from '../services/resumeAnalysisService.js';
 import {
   parseResumeFile,
   parseResumeText,
