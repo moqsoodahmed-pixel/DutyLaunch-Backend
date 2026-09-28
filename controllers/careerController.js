@@ -3,7 +3,58 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
 import { CareerProfile, ScoringConfig, ResumeAnalysis } from '../models/index.js';
-import { analyzeWithMagicalApi } from '../services/resumeAnalysisService.js';
+import { env } from '../config/env.js';
+
+/* ------------------------------------------------------------------ *
+ * MagicalAPI — inlined here to avoid a circular/missing export issue.
+ * Sends the resume file to MagicalAPI and returns a normalised score
+ * object.  Returns null on any failure so the caller can fall back
+ * gracefully to the internal engine.
+ * ------------------------------------------------------------------ */
+async function analyzeWithMagicalApi({ buffer, mimetype, originalname }) {
+  if (!env.magicalApiKey) return null;
+  try {
+    const form = new FormData();
+    form.append('resume_file', new Blob([buffer], { type: mimetype }), originalname || 'resume.pdf');
+    const res = await fetch('https://api.magicalapi.com/api/v1/resume-review/', {
+      method: 'POST',
+      headers: { 'x-api-key': env.magicalApiKey },
+      body: form,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) {
+      console.warn('[MagicalAPI] non-OK response:', res.status);
+      return null;
+    }
+    const data = await res.json();
+    const r = data.result || {};
+    const sc = (section) => {
+      if (!section) return 50;
+      const p = (section.pros || []).length;
+      const c = (section.cons || []).length;
+      return p + c === 0 ? 50 : Math.round((p / (p + c)) * 100);
+    };
+    return {
+      score: data.score ?? null,
+      categoryScores: {
+        contact:      sc(r.contact),
+        formatting:   sc(r.format),
+        experience:   sc(r.experiences),
+        skills:       sc(r.skills),
+        education:    sc(r.educations),
+        keywords:     Math.round((sc(r.experiences) + sc(r.summary)) / 2),
+        achievements: sc(r.experiences),
+      },
+      strengths:       Object.values(r).flatMap(s => s?.pros || []).slice(0, 6),
+      weaknesses:      Object.values(r).flatMap(s => (s?.cons || []).map(c => c?.message || c)).filter(Boolean).slice(0, 6),
+      recommendations: [...new Set(Object.values(r).flatMap(s => (s?.cons || []).flatMap(c => c?.tips || [])).filter(Boolean))].slice(0, 8),
+      suggested:       data.suggested?.summary?.content || null,
+    };
+  } catch (err) {
+    console.warn('[MagicalAPI] error:', err.message);
+    return null;
+  }
+}
 import {
   parseResumeFile,
   parseResumeText,
