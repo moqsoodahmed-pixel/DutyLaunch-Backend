@@ -160,6 +160,7 @@ export const parseUpload = asyncHandler(async (req, res) => {
     ]);
     resume = parsedResume;
     resume._magicalScore = magicalResult || null;
+    console.log('[MagicalAPI] parse result:', magicalResult ? `score=${magicalResult.score}` : 'null — check MAGICAL_API_KEY env var');
   } else if (req.body?.text?.trim()) {
     resume = parseResumeText(req.body.text, { fileName: 'pasted.txt', fileType: 'text/plain' });
   } else {
@@ -173,7 +174,10 @@ export const parseUpload = asyncHandler(async (req, res) => {
     doc.master = resume;
     doc.consent = { ...(doc.consent?.toObject?.() || doc.consent || {}), dataProcessing: consentRecord(req) };
     doc.touchRetention();
-    if (resume._magicalScore) doc.lastMagicalScore = resume._magicalScore;
+    if (resume._magicalScore) {
+      doc.lastMagicalScore = resume._magicalScore;
+      doc.markModified('lastMagicalScore'); // Mongoose needs this for Mixed fields
+    }
 
     // The original is stored once and never replaced, so there is always
     // a verified baseline to check every later rewrite against.
@@ -225,6 +229,7 @@ export const analyze = asyncHandler(async (req, res) => {
   // Signed-in: MagicalAPI score was persisted on doc during parse.
   // Anonymous: score is on resume._magicalScore (sent inline by frontend).
   const magical = doc?.lastMagicalScore || resume._magicalScore || null;
+  console.log('[MagicalAPI] analyze: doc.lastMagicalScore=', doc?.lastMagicalScore?.score, 'resume._magicalScore=', resume._magicalScore?.score);
   if (magical && typeof magical.score === 'number') {
     analysis.health.score = magical.score;
     analysis.health.band = magical.score >= 85
