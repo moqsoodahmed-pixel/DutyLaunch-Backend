@@ -16,6 +16,7 @@ import resumeRoutes from './resumeRoutes.js';
 import aiRoutes from './aiRoutes.js';
 import partnerRoutes from './partnerRoutes.js';
 import careerRoutes from './careerRoutes.js';
+import studioRoutes from './studioRoutes.js';
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use('/resume', resumeRoutes);
 router.use('/ai', aiRoutes);
 router.use('/partners', partnerRoutes);
 router.use('/career', careerRoutes);
+router.use('/studio', studioRoutes);
 
 export default router;

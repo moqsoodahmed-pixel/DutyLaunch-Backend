@@ -15,3 +15,5 @@ export { ResumeAnalysis } from './ResumeAnalysis.js';
 export { PartnerInstitute, PARTNER_TRACKS, PARTNER_MODES, PARTNER_STATUS } from './PartnerInstitute.js';
 export { CareerProfile, VERSION_KINDS } from './CareerProfile.js';
 export { ScoringConfig } from './ScoringConfig.js';
+export { CoverLetter, COVER_LETTER_TONES } from './CoverLetter.js';
+export { InterviewSession, INTERVIEW_TYPES, INTERVIEW_DIFFICULTIES } from './InterviewSession.js';

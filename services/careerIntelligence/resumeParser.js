@@ -35,7 +35,15 @@ const TXT_MIME = 'text/plain';
 export async function extractText(buffer, mimetype) {
   try {
     if (mimetype === PDF_MIME) {
-      const result = await pdfParse(buffer);
+      // pdf-parse's default engine (pdf.js 1.10) rejects some valid PDFs —
+      // including many produced by common generators — with "bad XRef
+      // entry". Retry those with the newer engine pdf-parse also bundles.
+      let result;
+      try {
+        result = await pdfParse(buffer);
+      } catch {
+        result = await pdfParse(buffer, { version: 'v2.0.550' });
+      }
       const text = result.text || '';
       const pages = result.numpages || 1;
       // A text PDF gives roughly 150+ characters per page. Far less than

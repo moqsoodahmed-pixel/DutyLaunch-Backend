@@ -3,7 +3,7 @@ import { consentRecord } from '../utils/consent.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
-import { CareerProfile, ScoringConfig, ResumeAnalysis } from '../models/index.js';
+import { CareerProfile, ScoringConfig, ResumeAnalysis, CoverLetter, InterviewSession } from '../models/index.js';
 import { env } from '../config/env.js';
 import {
   parseResumeFile,
@@ -467,7 +467,10 @@ export const updateProfile = asyncHandler(async (req, res) => {
 export const deleteProfile = asyncHandler(async (req, res) => {
   await CareerProfile.deleteOne({ user: req.user._id });
   await ResumeAnalysis.deleteMany({ user: req.user._id });
-  sendSuccess(res, { message: 'Your career profile and analysis history have been deleted.', data: { deleted: true } });
+  // Studio documents are part of the same profile and are erased with it.
+  await CoverLetter.deleteMany({ user: req.user._id });
+  await InterviewSession.deleteMany({ user: req.user._id });
+  sendSuccess(res, { message: 'Your career profile, analysis history, cover letters and interview practice have been deleted.', data: { deleted: true } });
 });
 
 /* ------------------------------------------------------------------ *

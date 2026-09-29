@@ -119,6 +119,21 @@ const careerProfileSchema = new mongoose.Schema(
       openToRelocation: { type: Boolean, default: false },
     },
 
+    /* AI Career Studio progress. Only facts the Studio cannot derive from
+       other data are stored here; every other step is computed from saved
+       versions, cover letters and interview sessions. */
+    studio: {
+      importSource: { type: String, enum: ['linkedin-pdf', 'resume', 'manual', ''], default: '' },
+      importStatus: { type: String, enum: ['imported', 'partial', 'manual-needed', ''], default: '' },
+      importedAt: Date,
+      importAdded: [{ type: String, maxlength: 200 }],
+      /* Reference only — a URL is never treated as imported data. */
+      linkedinUrl: { type: String, trim: true, maxlength: 200 },
+      profileConfirmedAt: Date,
+      profilePdfDownloadedAt: Date,
+      documentsDownloadedAt: Date,
+    },
+
     /* Consent, recorded explicitly rather than assumed (spec §35, §39). */
     consent: {
       /* DPDP Act 2023: consent given when the CV was uploaded. */

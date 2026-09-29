@@ -14,6 +14,13 @@ const optionalDefaults = {
   MAX_UPLOAD_MB: '5',
   RATE_LIMIT_WINDOW_MIN: '15',
   RATE_LIMIT_MAX: '300',
+  // AI provider for the career tools: 'openai' or 'groq'. When unset, the
+  // provider is chosen by which key is present (OpenAI first).
+  AI_PROVIDER: '',
+  // OpenAI Responses API. The model id is verified against the API project
+  // on first use; an unavailable id fails loudly and is never substituted.
+  OPENAI_MODEL: 'gpt-5.6-luna',
+  OPENAI_TIMEOUT_MS: '60000',
   GROQ_MODEL: 'openai/gpt-oss-120b',
   // Comma-separated backups tried, in order, only if GROQ_MODEL itself comes
   // back as "model does not exist" (Groq's lineup changes over time — these
@@ -70,6 +77,10 @@ export function loadEnv() {
     // Free-tier Groq key from https://console.groq.com/keys — the AI Career
     // Assistant endpoint checks this at request time (not at boot) so the
     // rest of the API keeps working even before it's configured.
+    aiProvider: (process.env.AI_PROVIDER || '').trim().toLowerCase(),
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
+    openaiModel: process.env.OPENAI_MODEL,
+    openaiTimeoutMs: Number(process.env.OPENAI_TIMEOUT_MS) || 60000,
     groqApiKey: process.env.GROQ_API_KEY || '',
     groqModel: process.env.GROQ_MODEL,
     groqModelFallbacks: (process.env.GROQ_MODEL_FALLBACKS || '')

@@ -2,7 +2,7 @@
   "name": "dutylaunch-server",
   "version": "1.0.0",
   "private": true,
-  "description": "DutyLaunch REST API \u2014 career, education and global mobility platform",
+  "description": "DutyLaunch REST API — career, education and global mobility platform",
   "type": "module",
   "main": "server.js",
   "engines": {
@@ -20,6 +20,7 @@
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
+    "docx": "^8.5.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
@@ -30,6 +31,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.15.0",
     "slugify": "^1.6.6",
     "zod": "^3.23.8"
   },
