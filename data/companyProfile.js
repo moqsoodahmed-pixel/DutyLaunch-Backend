@@ -14,7 +14,7 @@ export const companyProfile = {
   name: 'DutyLaunch',
   tagline: 'A career, education and global-mobility platform.',
   contact: {
-    email: 'hello@dutylaunch.com',
+    email: 'contact@dutylaunch.com',
     supportEmail: 'support@dutylaunch.in',
     phone: '+91 85488 54826',
     whatsapp: '+91 85488 54826',
