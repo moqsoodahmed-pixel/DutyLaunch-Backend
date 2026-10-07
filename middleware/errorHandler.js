@@ -46,7 +46,9 @@ export function errorHandler(err, req, res, next) {
 
   if (statusCode >= 500) {
     logger.error(`${req.method} ${req.originalUrl} → ${err.stack || err.message}`);
-    if (env.isProd) message = 'Something went wrong on our side';
+    // Messages written for users (ApiError, e.g. "AI is not available right
+    // now") are safe to show; unexpected crashes stay hidden in production.
+    if (env.isProd && !err.isOperational) message = 'Something went wrong on our side';
   }
 
   res.status(statusCode).json({

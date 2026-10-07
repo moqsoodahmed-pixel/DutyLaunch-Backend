@@ -258,8 +258,8 @@ export const TASK_ROUTES = {
   default: ['groq', 'gemini', 'mistral'],
 };
 
-function routeFor(task) {
-  const chain = TASK_ROUTES[task] || TASK_ROUTES.default;
+function routeFor(task, only = null) {
+  const chain = only || TASK_ROUTES[task] || TASK_ROUTES.default;
   return chain.filter((name) => ROUTER_PROVIDERS[name]?.key());
 }
 
@@ -343,7 +343,7 @@ async function callRouterProvider(name, messages, options, fetchImpl) {
 
 async function callRouted(messages, options, fetchImpl) {
   const task = options.task || 'general';
-  const chain = routeFor(task);
+  const chain = routeFor(task, options.onlyProviders);
   if (!chain.length) throw new Error('No AI model is configured in this environment.');
 
   const failures = [];
@@ -417,6 +417,11 @@ export async function callModel(messages, options = {}) {
   if (!provider) throw new Error('No AI model is configured in this environment.');
   if (provider === 'openai') return callOpenAi(messages, options, settings(), options.fetchImpl || fetch);
   if (provider === 'router') return callRouted(messages, options, options.fetchImpl || fetch);
+  // AI_PROVIDER=groq: Groq only, but through the same caller as the router so
+  // each task gets its full token budget and JSON mode. (The older chat
+  // helper capped every reply at 700 tokens, which cut off job descriptions,
+  // cover letters and interview answers.)
+  if (provider === 'groq') return callRouted(messages, { ...options, onlyProviders: ['groq'] }, options.fetchImpl || fetch);
   return callGroqProvider(messages, options);
 }
 

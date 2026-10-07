@@ -155,3 +155,20 @@ test('every task the app sends has a route', () => {
     assert.ok(TASK_ROUTES[task], task);
   }
 });
+
+test('AI_PROVIDER=groq uses only Groq, with the full token budget (not the old 700 cap)', async () => {
+  process.env.AI_PROVIDER = 'groq';
+  const { fetchImpl, calls } = fakeProviders();
+  const text = await callModel(messages, { json: true, task: 'job-description', maxOutputTokens: 2000, fetchImpl });
+  assert.equal(text, '{"from":"groq"}');
+  assert.deepEqual(calls.map((c) => c.name), ['groq']);
+  assert.equal(calls[0].body.max_tokens, 2000);
+});
+
+test('AI_PROVIDER=groq never falls back to Gemini or Mistral', async () => {
+  process.env.AI_PROVIDER = 'groq';
+  const down = [{ status: 503, body: { error: {} } }, { status: 503, body: { error: {} } }];
+  const { fetchImpl, calls } = fakeProviders({ groq: down });
+  await assert.rejects(() => callModel(messages, { task: 'cover-letter', fetchImpl }));
+  assert.ok(calls.every((c) => c.name === 'groq'));
+});
