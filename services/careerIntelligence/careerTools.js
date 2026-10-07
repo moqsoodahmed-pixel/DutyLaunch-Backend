@@ -61,7 +61,7 @@ export async function generateLinkedIn(resume, { profile, jobIntel, keywordResul
   ].join('\n');
 
   try {
-    const reply = await callModel(buildPrompt(context, task));
+    const reply = await callModel(buildPrompt(context, task), { task: 'linkedin-optimise' });
     const data = parseJson(reply);
     return {
       engine: 'model',
@@ -143,7 +143,7 @@ export async function generateCoverLetter(resume, { profile, jobIntel, keywordRe
   ].join('\n');
 
   try {
-    const reply = await callModel(buildPrompt(context, task));
+    const reply = await callModel(buildPrompt(context, task), { task: 'cover-letter' });
     const data = parseJson(reply);
     return {
       engine: 'model',
@@ -263,7 +263,7 @@ export async function generateInterviewPrep(resume, { profile, jobIntel, keyword
   let engine = 'model';
 
   try {
-    const reply = await callModel(buildPrompt(context, task));
+    const reply = await callModel(buildPrompt(context, task), { task: 'interview-prep' });
     generated = parseJson(reply);
   } catch (err) {
     logger.error(`[career-tools] interview prep generation failed: ${err.message}`);

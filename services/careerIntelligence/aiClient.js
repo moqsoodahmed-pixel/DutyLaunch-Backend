@@ -7,11 +7,16 @@
  * directly. Scoring, parsing, keyword classification and integrity checks
  * stay deterministic and never call a model.
  *
- * Providers:
+ * Providers (AI_PROVIDER):
+ *   router — free multi-provider mode. Each task goes to the provider that
+ *            suits it best (Groq, Gemini or Mistral), with automatic
+ *            fallback to the next provider when one is rate-limited or
+ *            down. See TASK_ROUTES below. Default when no OpenAI key is set
+ *            and at least one free key (GROQ/GEMINI/MISTRAL) is present.
  *   openai — OpenAI Responses API (POST /v1/responses). Default when
  *            OPENAI_API_KEY is set.
- *   groq   — the existing Groq chat integration (aiAssistantService).
- *   (gemini is a planned provider; add it as another entry in PROVIDERS.)
+ *   groq   — the original single-provider Groq integration
+ *            (aiAssistantService). Kept for backwards compatibility.
  *
  * Every call either returns the model's text or throws. Callers catch the
  * throw and fall back to their rule-based path, so a model outage never
@@ -23,12 +28,17 @@ import { logger } from '../../utils/logger.js';
 const OPENAI_BASE = 'https://api.openai.com/v1';
 
 /* Settings are read on every call so tests and hot config changes work. */
+function anyFreeKey() {
+  return Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.MISTRAL_API_KEY);
+}
+
 function settings() {
-  const provider = (process.env.AI_PROVIDER || '').trim().toLowerCase();
+  let provider = (process.env.AI_PROVIDER || '').trim().toLowerCase();
+  if (provider === 'auto') provider = '';
   return {
     provider:
       provider ||
-      (process.env.OPENAI_API_KEY ? 'openai' : process.env.GROQ_API_KEY ? 'groq' : ''),
+      (process.env.OPENAI_API_KEY ? 'openai' : anyFreeKey() ? 'router' : ''),
     openaiKey: process.env.OPENAI_API_KEY || '',
     openaiModel: (process.env.OPENAI_MODEL || 'gpt-5.6-luna').trim(),
     timeoutMs: Number(process.env.OPENAI_TIMEOUT_MS) || 60000,
@@ -39,9 +49,14 @@ function settings() {
  * Usage tracking (in-process). Counts only — never prompt or reply text,
  * because both contain candidates' personal data.
  * ------------------------------------------------------------------ */
-const usage = { calls: 0, failures: 0, inputTokens: 0, outputTokens: 0, byTask: {} };
+const usage = { calls: 0, failures: 0, inputTokens: 0, outputTokens: 0, byTask: {}, byProvider: {} };
 
-function recordUsage(task, u = {}, ok = true) {
+function recordUsage(task, u = {}, ok = true, provider = null) {
+  if (provider) {
+    const p = (usage.byProvider[provider] = usage.byProvider[provider] || { calls: 0, failures: 0 });
+    p.calls += 1;
+    if (!ok) p.failures += 1;
+  }
   usage.calls += 1;
   if (!ok) usage.failures += 1;
   usage.inputTokens += u.input_tokens || 0;
@@ -166,6 +181,188 @@ async function callGroqProvider(messages, options) {
   return reply;
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Router: free multi-provider mode (AI_PROVIDER=router)
+ *
+ * Groq, Gemini and Mistral all accept OpenAI-style chat-completion
+ * requests, so one function calls all three. Each task has a preferred
+ * order of providers; providers without a key are skipped, and a provider
+ * that is rate-limited, down or returns a cut-off answer hands the task to
+ * the next one. If every provider fails, callModel throws and the caller
+ * uses its rule-based fallback, exactly as before.
+ * ------------------------------------------------------------------ */
+
+const listOf = (...values) =>
+  values
+    .flatMap((v) => String(v || '').split(','))
+    .map((v) => v.trim())
+    .filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+export const ROUTER_PROVIDERS = {
+  groq: {
+    label: 'Groq',
+    url: () => process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1/chat/completions',
+    key: () => process.env.GROQ_API_KEY || '',
+    models: () => listOf(process.env.GROQ_MODEL || 'openai/gpt-oss-120b', process.env.GROQ_MODEL_FALLBACKS),
+    // Groq's free tier allows ~8,000 tokens per minute per model, so a
+    // single request must stay well under that.
+    maxTokensCap: () => Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 6000,
+    reasoningEffort: (model) => (/gpt-oss/i.test(model) ? 'low' : null),
+  },
+  gemini: {
+    label: 'Gemini',
+    url: () => 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    key: () => process.env.GEMINI_API_KEY || '',
+    models: () => listOf(process.env.GEMINI_MODEL || 'gemini-flash-latest', process.env.GEMINI_MODEL_FALLBACKS || 'gemini-flash-lite-latest'),
+    maxTokensCap: () => Number(process.env.GEMINI_MAX_OUTPUT_TOKENS) || 16000,
+    // Gemini Flash "thinks" before answering and that counts against
+    // max_tokens; keeping effort low leaves room for the actual answer.
+    reasoningEffort: () => 'low',
+  },
+  mistral: {
+    label: 'Mistral',
+    url: () => 'https://api.mistral.ai/v1/chat/completions',
+    key: () => process.env.MISTRAL_API_KEY || '',
+    models: () => listOf(process.env.MISTRAL_MODEL || 'mistral-small-latest', process.env.MISTRAL_MODEL_FALLBACKS),
+    maxTokensCap: () => Number(process.env.MISTRAL_MAX_OUTPUT_TOKENS) || 8000,
+    reasoningEffort: () => null,
+  },
+};
+
+/**
+ * Which provider handles which task, in order of preference.
+ *   Groq    — fast, follows strict rewrite rules: resume, LinkedIn, mock interview
+ *   Mistral — natural, human-sounding prose: cover letters
+ *   Gemini  — large outputs: top-10 interview Q&A, interview prep
+ */
+export const TASK_ROUTES = {
+  // Step 4: Generate professional resume
+  'resume-rewrite': ['groq', 'gemini', 'mistral'],
+  'resume-summary': ['groq', 'gemini', 'mistral'],
+  // Step 6: Generate cover letter
+  'cover-letter-paragraph': ['mistral', 'groq', 'gemini'],
+  'cover-letter': ['mistral', 'groq', 'gemini'],
+  // Step 7: Top 10 interview Q&A
+  'interview-top10': ['gemini', 'mistral', 'groq'],
+  'interview-regenerate': ['gemini', 'groq', 'mistral'],
+  'interview-prep': ['gemini', 'mistral', 'groq'],
+  // Mock interview (Phase 2) — speed matters most
+  'mock-plan': ['groq', 'gemini', 'mistral'],
+  'mock-evaluate': ['groq', 'gemini', 'mistral'],
+  'mock-report': ['groq', 'gemini', 'mistral'],
+  // Career tools
+  'linkedin-optimise': ['groq', 'gemini', 'mistral'],
+  default: ['groq', 'gemini', 'mistral'],
+};
+
+function routeFor(task) {
+  const chain = TASK_ROUTES[task] || TASK_ROUTES.default;
+  return chain.filter((name) => ROUTER_PROVIDERS[name]?.key());
+}
+
+class ProviderError extends Error {
+  constructor(message, { status = null, modelMissing = false } = {}) {
+    super(message);
+    this.status = status;
+    this.modelMissing = modelMissing;
+  }
+}
+
+const MODEL_MISSING = /model.*(not\s*found|does not exist|not exist|unknown|invalid|decommissioned|not supported)|no such model/i;
+
+async function postChat(name, model, messages, options, fetchImpl, { withExtras }) {
+  const p = ROUTER_PROVIDERS[name];
+  const maxTokens = Math.min(options.maxOutputTokens || 4000, p.maxTokensCap());
+  const body = { model, messages: messages.map((m) => ({ role: m.role, content: String(m.content) })), max_tokens: maxTokens, temperature: 0.4 };
+  if (withExtras) {
+    if (options.json) body.response_format = { type: 'json_object' };
+    const effort = p.reasoningEffort(model);
+    if (effort) body.reasoning_effort = effort;
+  }
+
+  let res;
+  try {
+    res = await fetchImpl(p.url(), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${p.key()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 90000),
+    });
+  } catch (err) {
+    throw new ProviderError(`${p.label} ${model}: ${err.name === 'TimeoutError' ? 'timed out' : 'network error'}`);
+  }
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    // Error bodies can echo the prompt (candidate data): keep only the
+    // status and a short machine-readable error code in logs.
+    const err = Array.isArray(json) ? json[0]?.error : json?.error;
+    const code = err?.code || err?.type || err?.status || '';
+    const detail = typeof err?.message === 'string' ? err.message.slice(0, 200) : '';
+    throw new ProviderError(`${p.label} ${model}: HTTP ${res.status}${code ? ` ${code}` : ''}`, {
+      status: res.status,
+      modelMissing: res.status === 404 || ((res.status === 400 || res.status === 422) && MODEL_MISSING.test(detail)),
+    });
+  }
+
+  const choice = json?.choices?.[0];
+  const text = typeof choice?.message?.content === 'string' ? choice.message.content.trim() : '';
+  if (!text) throw new ProviderError(`${p.label} ${model}: empty response`);
+  if (choice.finish_reason === 'length' && options.json) {
+    throw new ProviderError(`${p.label} ${model}: answer was cut off (max tokens)`);
+  }
+  return { text, usage: json?.usage || {} };
+}
+
+async function callRouterProvider(name, messages, options, fetchImpl) {
+  const p = ROUTER_PROVIDERS[name];
+  let lastErr = null;
+  for (const model of p.models()) {
+    for (const withExtras of [true, false]) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const { text, usage: u } = await postChat(name, model, messages, options, fetchImpl, { withExtras });
+        return { text, model, usage: u };
+      } catch (err) {
+        lastErr = err;
+        // A 400 can mean the model rejected JSON mode or reasoning_effort:
+        // retry once with a plain request before giving up on this model.
+        if (withExtras && err.status === 400 && !err.modelMissing) continue;
+        break;
+      }
+    }
+    // Only a missing/retired model moves on to the next model id; rate
+    // limits, bad keys and outages hand the task to the next provider.
+    if (!lastErr?.modelMissing) throw lastErr;
+  }
+  throw lastErr || new ProviderError(`${p.label}: no model configured`);
+}
+
+async function callRouted(messages, options, fetchImpl) {
+  const task = options.task || 'general';
+  const chain = routeFor(task);
+  if (!chain.length) throw new Error('No AI model is configured in this environment.');
+
+  const failures = [];
+  for (const name of chain) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const { text, model, usage: u } = await callRouterProvider(name, messages, options, fetchImpl);
+      const input = u.prompt_tokens || u.input_tokens || 0;
+      const output = u.completion_tokens || u.output_tokens || 0;
+      recordUsage(task, { input_tokens: input, output_tokens: output }, true, name);
+      logger.info(`[ai] ${name} (${model}) ${task}: ${input} in / ${output} out tokens${failures.length ? ` after ${failures.length} fallback(s)` : ''}`);
+      return text;
+    } catch (err) {
+      recordUsage(task, {}, false, name);
+      failures.push(err.message);
+      logger.warn(`[ai] ${task} failed on ${name}: ${err.message}`);
+    }
+  }
+  throw new Error(`Every AI provider failed for ${task}: ${failures.join('; ')}`);
+}
+
 /* ------------------------------------------------------------------ *
  * Public API
  * ------------------------------------------------------------------ */
@@ -177,6 +374,7 @@ export function aiProvider() {
   const cfg = settings();
   if (cfg.provider === 'openai' && cfg.openaiKey) return 'openai';
   if (cfg.provider === 'groq' && process.env.GROQ_API_KEY) return 'groq';
+  if (cfg.provider === 'router' && anyFreeKey()) return 'router';
   return '';
 }
 
@@ -188,13 +386,21 @@ export function aiConfigured() {
 /** Configuration status for health/admin screens. Never includes keys. */
 export function aiStatus() {
   const cfg = settings();
-  return {
-    provider: aiProvider() || null,
+  const provider = aiProvider();
+  const status = {
+    provider: provider || null,
     requestedProvider: cfg.provider || null,
-    model: aiProvider() === 'openai' ? cfg.openaiModel : aiProvider() === 'groq' ? process.env.GROQ_MODEL || null : null,
+    model: provider === 'openai' ? cfg.openaiModel : provider === 'groq' ? process.env.GROQ_MODEL || null : null,
     modelVerified: modelCheck ? modelCheck.ok && !modelCheck.unverified : null,
     modelProblem: modelCheck && !modelCheck.ok ? modelCheck.message : null,
   };
+  if (provider === 'router') {
+    status.providers = Object.fromEntries(
+      Object.entries(ROUTER_PROVIDERS).map(([name, p]) => [name, { configured: Boolean(p.key()), model: p.models()[0] || null }])
+    );
+    status.routes = Object.fromEntries(Object.keys(TASK_ROUTES).map((task) => [task, routeFor(task)]));
+  }
+  return status;
 }
 
 /**
@@ -208,6 +414,7 @@ export async function callModel(messages, options = {}) {
   const provider = aiProvider();
   if (!provider) throw new Error('No AI model is configured in this environment.');
   if (provider === 'openai') return callOpenAi(messages, options, settings(), options.fetchImpl || fetch);
+  if (provider === 'router') return callRouted(messages, options, options.fetchImpl || fetch);
   return callGroqProvider(messages, options);
 }
 

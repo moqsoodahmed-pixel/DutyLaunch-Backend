@@ -413,7 +413,7 @@ async function rewriteBullets(targets, context, { sourceText, confirmedFacts }) 
     ].join('\n');
 
     // eslint-disable-next-line no-await-in-loop
-    const reply = await callModel(buildPrompt(context, task));
+    const reply = await callModel(buildPrompt(context, task), { task: 'resume-rewrite' });
     const parsed = parseModelJson(reply);
     const rows = Array.isArray(parsed) ? parsed : parsed.results || [];
 
@@ -464,7 +464,7 @@ async function rewriteSummary(resume, context, { sourceText, confirmedFacts, pro
     existing ? `CURRENT SUMMARY:\n${existing}` : '(There is no current summary.)',
   ].filter(Boolean).join('\n');
 
-  const reply = await callModel(buildPrompt(context, task));
+  const reply = await callModel(buildPrompt(context, task), { task: 'resume-summary' });
   const row = parseModelJson(reply);
   const proposed = String(row.rewritten || '').trim();
   if (!proposed || proposed === existing) return null;
