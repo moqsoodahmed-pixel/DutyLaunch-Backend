@@ -17,3 +17,4 @@ export { CareerProfile, VERSION_KINDS } from './CareerProfile.js';
 export { ScoringConfig } from './ScoringConfig.js';
 export { CoverLetter, COVER_LETTER_TONES } from './CoverLetter.js';
 export { InterviewSession, INTERVIEW_TYPES, INTERVIEW_DIFFICULTIES } from './InterviewSession.js';
+export { Payment, PAYMENT_STATUS, PAYMENT_ITEM_TYPES } from './Payment.js';

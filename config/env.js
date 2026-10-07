@@ -41,6 +41,12 @@ const optionalDefaults = {
   MISTRAL_MODEL: 'mistral-small-latest',
   // Per-request timeout for router calls (ms). Interview Q&A is a long answer.
   AI_TIMEOUT_MS: '90000',
+  // Razorpay. Keys: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (required to take
+  // payments) and RAZORPAY_WEBHOOK_SECRET (optional). No defaults on purpose.
+  // GST_PRICING must match GST_PRICING in the frontend's src/data/legal.js:
+  // 'exclusive' adds GST_RATE% at checkout, 'inclusive' charges the shown price.
+  GST_PRICING: 'exclusive',
+  GST_RATE: '18',
 };
 
 /**
@@ -104,6 +110,8 @@ export function loadEnv() {
     geminiModel: process.env.GEMINI_MODEL,
     mistralApiKey: process.env.MISTRAL_API_KEY || '',
     mistralModel: process.env.MISTRAL_MODEL,
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
+    razorpayConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
   };
 }
 

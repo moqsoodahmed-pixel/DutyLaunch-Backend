@@ -35,7 +35,16 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '200kb' }));
+app.use(
+  express.json({
+    limit: '200kb',
+    // Razorpay webhooks are signed over the exact bytes received, so keep a
+    // copy of the raw body for that one route.
+    verify: (req, res, buf) => {
+      if (req.originalUrl?.startsWith('/api/payments/webhook')) req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true, limit: '200kb' }));
 app.use(cookieParser());
 app.use(compression());

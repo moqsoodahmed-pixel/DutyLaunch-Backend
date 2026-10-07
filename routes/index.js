@@ -17,6 +17,7 @@ import aiRoutes from './aiRoutes.js';
 import partnerRoutes from './partnerRoutes.js';
 import careerRoutes from './careerRoutes.js';
 import studioRoutes from './studioRoutes.js';
+import paymentRoutes from './paymentRoutes.js';
 
 const router = Router();
 
@@ -43,5 +44,6 @@ router.use('/ai', aiRoutes);
 router.use('/partners', partnerRoutes);
 router.use('/career', careerRoutes);
 router.use('/studio', studioRoutes);
+router.use('/payments', paymentRoutes);
 
 export default router;
