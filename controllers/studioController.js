@@ -25,7 +25,7 @@ import { CareerProfile, ScoringConfig, CoverLetter, InterviewSession, COVER_LETT
 import { parseResumeText, parseResumeJson, analyzeCandidate, generateCoverLetter } from '../services/careerIntelligence/index.js';
 import { extractText } from '../services/careerIntelligence/resumeParser.js';
 import { looksLikeLinkedInExport, parseLinkedInText, mergeResumes, normaliseLinkedInUrl } from '../services/careerIntelligence/linkedinImport.js';
-import { generateTop10, regenerateQuestion, planMockQuestions, evaluateAnswer, buildMockReport, parseModelJson } from '../services/careerIntelligence/studioAi.js';
+import { generateTop10, regenerateQuestion, planMockQuestions, evaluateAnswer, buildMockReport, parseModelJson, generateJobDescription } from '../services/careerIntelligence/studioAi.js';
 import { callModel, aiConfigured, aiStatus } from '../services/careerIntelligence/aiClient.js';
 import { buildPrompt, buildRewriteContext } from '../services/careerIntelligence/rewriter.js';
 import { sendDocument, safeFilename } from '../services/documents/documentRenderer.js';
@@ -347,6 +347,24 @@ export const downloadResumeDocument = asyncHandler(async (req, res) => {
     filename: safeFilename(resume.personal?.name || 'Candidate', 'Resume', version.label),
     inline,
   });
+});
+
+/**
+ * POST /api/studio/job-description — step 4. Writes a target job
+ * description from the candidate's confirmed LinkedIn/CV profile.
+ */
+export const suggestJobDescription = asyncHandler(async (req, res) => {
+  const { jobTitle, company, industry, experienceLevel } = req.body || {};
+  if (!aiConfigured()) throw new ApiError(503, 'AI is not available right now. Paste the job posting instead.');
+  const ctx = await context(req.user._id, { jobTitle, company });
+  let result;
+  try {
+    result = await generateJobDescription(ctx.resume, { ...genOpts(ctx), jobTitle, company, industry, experienceLevel });
+  } catch (err) {
+    logger.error(`[studio] job description generation failed: ${err.message}`);
+    throw new ApiError(503, 'The AI could not write a job description right now. Try again in a moment, or paste the job posting.');
+  }
+  sendSuccess(res, { message: 'Job description written', data: { ...result, source: 'ai' } });
 });
 
 /* ------------------------------------------------------------------ *

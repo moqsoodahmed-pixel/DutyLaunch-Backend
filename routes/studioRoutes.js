@@ -28,6 +28,7 @@ const importSchema = z.object({
 const linkedinUrlSchema = z.object({ url: s(300) });
 const resumeBody = z.object({ resume: z.record(z.any()).optional(), mode: z.enum(['replace']).optional() });
 const manualSchema = z.object({ consent: consentField, resume: z.record(z.any()), mode: z.enum(['replace']).optional() });
+const jobDescriptionSchema = z.object({ jobTitle: opt(160), company: opt(160), industry: opt(120), experienceLevel: opt(40) });
 const coverLetterSchema = z.object({
   versionId: objectId, jobTitle: opt(160), company: opt(160), jobDescription: z.string().min(40, 'Paste the full job description').max(20000),
   tone: z.enum(COVER_LETTER_TONES).optional(),
@@ -60,6 +61,9 @@ router.get('/profile-document', resumeLimiter, studio.downloadProfileDocument);
 router.get('/versions/:versionId/document', resumeLimiter, studio.downloadResumeDocument);
 
 /* Step 6: cover letters */
+// Step 4 — AI-written target job description from the confirmed profile
+router.post('/job-description', aiLimiter, validate(jobDescriptionSchema), studio.suggestJobDescription);
+
 router.post('/cover-letters', aiLimiter, validate(coverLetterSchema), studio.createCoverLetter);
 router.get('/cover-letters', studio.listCoverLetters);
 router.get('/cover-letters/:id', studio.getCoverLetter);

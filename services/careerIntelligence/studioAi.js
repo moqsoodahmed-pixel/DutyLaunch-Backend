@@ -421,3 +421,66 @@ export async function buildMockReport(resume, session, opts = {}) {
     };
   }
 }
+
+
+/* ------------------------------------------------------------------ *
+ * Step 4 — AI-suggested job description
+ *
+ * Fills the "Target job description" box from the candidate's imported
+ * LinkedIn profile, so they get a Job Match score even without a real
+ * posting. The candidate's profile only decides WHICH job (field, stack,
+ * seniority); the requirements are what a real employer would list, so the
+ * Job Match score is not inflated by copying the candidate's own skills.
+ * ------------------------------------------------------------------ */
+
+const LEVEL_TEXT = {
+  fresher: 'fresher / recent graduate (0 years)',
+  entry: 'entry level (0–2 years)',
+  mid: 'mid level (3–7 years)',
+  senior: 'senior (8+ years)',
+  lead: 'lead / manager',
+};
+
+const jobDescriptionOut = z.object({
+  jobTitle: text(120),
+  description: text(6000).refine((s) => s.length >= 200, 'description too short'),
+});
+
+const JOB_DESCRIPTION_RULES = [
+  'Return JSON: { "jobTitle": "", "description": "" }',
+  'Write ONE realistic job posting, the way an employer would publish it on a job board, for the role described in TARGET.',
+  'If TARGET has no job title, choose the single most likely next role for this candidate from CANDIDATE FACTS (their headline, latest role, skills and education) and put it in "jobTitle". Otherwise repeat the given title.',
+  'Use CANDIDATE FACTS only to understand the candidate\'s field and specialisation (for example MERN vs Java, SOC analyst vs pentester), so the posting is the kind of job they would apply for.',
+  'List the requirements a real employer would ask for at this level — include standard requirements for the role even if the candidate does not have them. Do not copy the candidate\'s skill list, and never mention the candidate.',
+  'If a company or industry is given, fit the wording to it, but do not invent facts about the company (size, products, clients, salary, benefits). Never include a salary.',
+  '"description" is plain text, 250–400 words, with these headings on their own lines: About the role / Responsibilities / Required skills / Nice to have / Experience and education. Under each heading use lines starting with "- " (except About the role, which is 2–3 sentences).',
+].join('\n');
+
+export async function generateJobDescription(resume, { jobTitle, company, industry, experienceLevel, ...opts } = {}) {
+  const ctx = context(resume, opts);
+  const roles = (resume.experience || []).filter((r) => r.title).slice(0, 3).map((r) => [r.title, r.company].filter(Boolean).join(' at '));
+  const education = (resume.education || []).slice(0, 2).map((e) => [e.degree, e.field].filter(Boolean).join(' in ')).filter(Boolean);
+  const linkedin = [
+    'CANDIDATE PROFILE SUMMARY (from their LinkedIn import)',
+    `Headline: ${resume.personal?.headline || '(none)'}`,
+    `Recent roles: ${roles.join('; ') || '(none)'}`,
+    `Education: ${education.join('; ') || '(none)'}`,
+  ].join('\n');
+  const target = [
+    'TARGET',
+    `Job title: ${jobTitle || '(not given — choose from the candidate facts)'}`,
+    `Company: ${company || '(not given)'}`,
+    `Industry: ${industry || '(not given)'}`,
+    `Experience level: ${LEVEL_TEXT[experienceLevel] || experienceLevel || 'match the candidate facts'}`,
+  ].join('\n');
+  const task = ['Write a target job description for this candidate\'s next application.', '', linkedin, '', target, '', JOB_DESCRIPTION_RULES].join('\n');
+
+  const reply = await callModel(buildPrompt(ctx, task), { json: true, task: 'job-description', maxOutputTokens: 2000 });
+  const parsed = jobDescriptionOut.safeParse(parseModelJson(reply));
+  if (!parsed.success) throw new Error('The model returned an unusable job description.');
+  return {
+    jobTitle: parsed.data.jobTitle || jobTitle || '',
+    description: parsed.data.description,
+    note: 'Written by AI from your LinkedIn profile. For an exact Job Match score, paste the real job posting instead.',
+  };
+}

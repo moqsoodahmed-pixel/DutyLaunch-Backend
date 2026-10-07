@@ -240,6 +240,8 @@ export const TASK_ROUTES = {
   // Step 4: Generate professional resume
   'resume-rewrite': ['groq', 'gemini', 'mistral'],
   'resume-summary': ['groq', 'gemini', 'mistral'],
+  // Step 4: AI-written target job description (from the LinkedIn profile)
+  'job-description': ['groq', 'gemini', 'mistral'],
   // Step 6: Generate cover letter
   'cover-letter-paragraph': ['mistral', 'groq', 'gemini'],
   'cover-letter': ['mistral', 'groq', 'gemini'],
