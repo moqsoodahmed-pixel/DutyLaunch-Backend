@@ -82,6 +82,27 @@ export const uploadResumeMemory = multer({
 const CI_TYPES = [...DOC_TYPES, 'text/plain'];
 const CI_EXTENSIONS = [...RESUME_EXTENSIONS, '.txt'];
 
+/**
+ * AI Career Studio step 1: a LinkedIn "Save to PDF" export and/or a CV in
+ * one request, as the fields "linkedin" and "cv" ("resume" is still
+ * accepted from older clients).
+ */
+export const uploadProfileFilesMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.maxUploadBytes, files: 2 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!CI_TYPES.includes(file.mimetype) || !CI_EXTENSIONS.includes(ext)) {
+      return cb(ApiError.badRequest('Please upload a PDF, DOCX, DOC or TXT file.'));
+    }
+    return cb(null, true);
+  },
+}).fields([
+  { name: 'linkedin', maxCount: 1 },
+  { name: 'cv', maxCount: 1 },
+  { name: 'resume', maxCount: 1 },
+]);
+
 export const uploadCvMemory = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: env.maxUploadBytes, files: 1 },

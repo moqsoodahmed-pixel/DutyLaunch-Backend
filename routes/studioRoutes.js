@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as studio from '../controllers/studioController.js';
 import { protect, restrictTo } from '../middleware/auth.js';
-import { uploadCvMemory } from '../middleware/upload.js';
+import { uploadProfileFilesMemory } from '../middleware/upload.js';
 import { resumeLimiter, aiLimiter } from '../middleware/rateLimiters.js';
 import { validate } from '../middleware/validate.js';
 import { consentField } from '../utils/consent.js';
@@ -51,7 +51,7 @@ const answerSchema = z.object({ answer: z.string().trim().min(2, 'Enter your ans
 router.get('/', studio.getStudio);
 
 /* Step 1–2: import, review, confirm */
-router.post('/import', resumeLimiter, uploadCvMemory.single('resume'), validate(importSchema), studio.importProfile);
+router.post('/import', resumeLimiter, uploadProfileFilesMemory, validate(importSchema), studio.importProfile);
 router.put('/linkedin-url', validate(linkedinUrlSchema), studio.setLinkedInUrl);
 router.post('/manual', validate(manualSchema), studio.manualProfile);
 router.post('/confirm', validate(resumeBody), studio.confirmProfile);

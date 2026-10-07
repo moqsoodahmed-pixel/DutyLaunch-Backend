@@ -332,6 +332,9 @@ const key = (...parts) => parts.map((p) => String(p || '').toLowerCase().replace
 export function mergeResumes(primary, secondary) {
   const out = JSON.parse(JSON.stringify(primary));
   const added = [];
+  out.personal = out.personal || {};
+  ['experience', 'education', 'certifications', 'projects'].forEach((k) => { out[k] = out[k] || []; });
+  out.skills = out.skills || {};
 
   ['name', 'headline', 'email', 'phone', 'location', 'linkedin', 'website'].forEach((f) => {
     if (!out.personal[f] && secondary.personal?.[f]) {
@@ -344,27 +347,77 @@ export function mergeResumes(primary, secondary) {
     added.push('summary');
   }
 
-  const expKeys = new Set(out.experience.map((r) => key(r.company, r.title)));
+  // The same job often appears in both files with slightly different
+  // wording ("Software Engineer" vs "Software Developer"). Treat it as one
+  // role when the company matches and either the title or the start date
+  // matches; then fill only what the primary is missing.
+  const sameRole = (a, b) =>
+    key(a.company) && key(a.company) === key(b.company) &&
+    (key(a.title) === key(b.title) || (a.startDate && key(a.startDate) === key(b.startDate)));
+  const addLines = (target, extra) => {
+    const have = new Set((target || []).map((l) => key(l)));
+    let n = 0;
+    (extra || []).forEach((l) => {
+      if (l && !have.has(key(l))) {
+        target.push(l);
+        have.add(key(l));
+        n += 1;
+      }
+    });
+    return n;
+  };
   (secondary.experience || []).forEach((r) => {
-    if (!expKeys.has(key(r.company, r.title))) {
+    const match = out.experience.find((o) => sameRole(o, r));
+    if (!match) {
       out.experience.push(r);
       added.push(`experience: ${r.title} at ${r.company}`);
+      return;
     }
-  });
-  const eduKeys = new Set(out.education.map((e) => key(e.institution, e.degree)));
-  (secondary.education || []).forEach((e) => {
-    if (!eduKeys.has(key(e.institution, e.degree))) {
-      out.education.push(e);
-      added.push(`education: ${e.degree || e.institution}`);
-    }
+    let filled = 0;
+    ['location', 'startDate', 'endDate', 'employmentType'].forEach((f) => {
+      if (!match[f] && r[f]) {
+        match[f] = r[f];
+        filled += 1;
+      }
+    });
+    match.responsibilities = match.responsibilities || [];
+    match.achievements = match.achievements || [];
+    match.skillsUsed = match.skillsUsed || [];
+    filled += addLines(match.achievements, r.achievements);
+    filled += addLines(match.responsibilities, r.responsibilities);
+    filled += addLines(match.skillsUsed, r.skillsUsed);
+    if (filled) added.push(`details for: ${match.title} at ${match.company}`);
   });
 
-  Object.keys(out.skills).forEach((group) => {
-    const have = new Set(out.skills[group].map((s) => s.toLowerCase()));
-    (secondary.skills?.[group] || []).forEach((s) => {
-      if (!have.has(s.toLowerCase())) {
+  const sameSchool = (a, b) =>
+    key(a.institution) && key(a.institution) === key(b.institution) &&
+    (key(a.degree) === key(b.degree) || !a.degree || !b.degree);
+  (secondary.education || []).forEach((e) => {
+    const match = out.education.find((o) => sameSchool(o, e));
+    if (!match) {
+      out.education.push(e);
+      added.push(`education: ${e.degree || e.institution}`);
+      return;
+    }
+    let filled = 0;
+    ['degree', 'field', 'location', 'startDate', 'endDate', 'grade'].forEach((f) => {
+      if (!match[f] && e[f]) {
+        match[f] = e[f];
+        filled += 1;
+      }
+    });
+    match.highlights = match.highlights || [];
+    filled += addLines(match.highlights, e.highlights);
+    if (filled) added.push(`details for: ${match.degree || match.institution}`);
+  });
+
+  Object.keys(secondary.skills || {}).forEach((group) => {
+    out.skills[group] = out.skills[group] || [];
+    const have = new Set(out.skills[group].map((s) => String(s).toLowerCase()));
+    (secondary.skills[group] || []).forEach((s) => {
+      if (!have.has(String(s).toLowerCase())) {
         out.skills[group].push(s);
-        have.add(s.toLowerCase());
+        have.add(String(s).toLowerCase());
         added.push(`skill: ${s}`);
       }
     });
@@ -374,6 +427,7 @@ export function mergeResumes(primary, secondary) {
   (secondary.certifications || []).forEach((c) => {
     if (!certKeys.has(key(c.name))) {
       out.certifications.push(c);
+      certKeys.add(key(c.name));
       added.push(`certification: ${c.name}`);
     }
   });
@@ -381,6 +435,7 @@ export function mergeResumes(primary, secondary) {
   (secondary.projects || []).forEach((p) => {
     if (!projKeys.has(key(p.name))) {
       out.projects.push(p);
+      projKeys.add(key(p.name));
       added.push(`project: ${p.name}`);
     }
   });

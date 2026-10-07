@@ -183,50 +183,111 @@ export const getStudio = asyncHandler(async (req, res) => {
  * ------------------------------------------------------------------ */
 
 /** POST /api/studio/import — LinkedIn PDF or CV (multipart "resume"). */
+/** Reads one uploaded file into a resume. `slot` names it in error messages. */
+async function readProfileFile(file, slot, { linkedinUrl }) {
+  const { text, wasScanned, lossy } = await extractText(file.buffer, file.mimetype);
+  if (wasScanned) {
+    throw ApiError.badRequest(`Your ${slot} looks like a scanned or image-only PDF, so there is no text to read. Upload a text-based PDF, or enter your details manually.`);
+  }
+  if (looksLikeLinkedInExport(text)) {
+    const { resume, report } = parseLinkedInText(text, { fileName: file.originalname, fileType: file.mimetype, linkedinUrl });
+    return { resume: parseResumeJson(resume), kind: 'linkedin', report };
+  }
+  const resume = parseResumeText(text, { fileName: file.originalname, fileType: file.mimetype, lossy });
+  return { resume: parseResumeJson(resume), kind: 'cv', report: null };
+}
+
+function importStatusOf(resume) {
+  const found = { header: Boolean(resume.personal?.name), experience: resume.experience?.length || 0, education: resume.education?.length || 0 };
+  return {
+    found,
+    status: found.header && found.experience ? 'imported' : found.header || found.experience ? 'partial' : 'manual-needed',
+    missing: [!found.header && 'name', !found.experience && 'experience', !found.education && 'education'].filter(Boolean),
+  };
+}
+
+/**
+ * POST /api/studio/import — multipart with "linkedin" (LinkedIn "Save to
+ * PDF" export, the main source) and/or "cv" (optional). When both are sent,
+ * the LinkedIn data is kept and the CV only fills what LinkedIn is missing:
+ * empty fields, extra jobs, bullet points, skills, certifications and
+ * projects.
+ */
 export const importProfile = asyncHandler(async (req, res) => {
-  if (!req.file) throw ApiError.badRequest('Attach your LinkedIn profile PDF or your CV.');
+  const files = req.files || {};
+  const linkedinFile = files.linkedin?.[0] || null;
+  const cvFile = files.cv?.[0] || files.resume?.[0] || null;
+  if (!linkedinFile && !cvFile) throw ApiError.badRequest('Attach your LinkedIn profile PDF, your CV, or both.');
+
   const mode = req.body?.mode === 'merge' ? 'merge' : 'replace';
   const linkedinUrl = req.body?.linkedinUrl ? normaliseLinkedInUrl(req.body.linkedinUrl) : null;
   if (req.body?.linkedinUrl && !linkedinUrl) throw ApiError.badRequest('That does not look like a LinkedIn profile URL (linkedin.com/in/…).');
 
-  const { text, wasScanned, lossy } = await extractText(req.file.buffer, req.file.mimetype);
-  if (wasScanned) {
-    throw ApiError.badRequest('This looks like a scanned or image-only PDF, so there is no text to read. Upload a text-based PDF, or enter your details manually.');
+  const warnings = [];
+  const fromLiBox = linkedinFile ? await readProfileFile(linkedinFile, 'LinkedIn PDF', { linkedinUrl }) : null;
+  const fromCvBox = cvFile ? await readProfileFile(cvFile, 'CV', { linkedinUrl }) : null;
+  if (fromLiBox && fromLiBox.kind !== 'linkedin' && fromCvBox?.kind !== 'linkedin') {
+    warnings.push('The file in the LinkedIn box does not look like a LinkedIn "Save to PDF" export, so it was read like a CV.');
   }
 
-  let imported;
-  let report;
-  if (looksLikeLinkedInExport(text)) {
-    ({ resume: imported, report } = parseLinkedInText(text, { fileName: req.file.originalname, fileType: req.file.mimetype, linkedinUrl }));
+  // Decide by what each file actually is, not by which box it was dropped
+  // in: a recognised LinkedIn export is always the main source.
+  let li = null;
+  let cv = null;
+  if (fromCvBox?.kind === 'linkedin' && fromLiBox?.kind !== 'linkedin') {
+    li = fromCvBox;
+    cv = fromLiBox;
   } else {
-    imported = parseResumeText(text, { fileName: req.file.originalname, fileType: req.file.mimetype, lossy });
-    const found = { header: Boolean(imported.personal?.name), experience: imported.experience?.length || 0, education: imported.education?.length || 0 };
-    report = {
-      source: 'resume',
-      status: found.header && found.experience ? 'imported' : found.header || found.experience ? 'partial' : 'manual-needed',
-      found,
-      missing: [!found.header && 'name', !found.experience && 'experience', !found.education && 'education'].filter(Boolean),
-      note: 'Your CV was read. Review every section before continuing.',
-    };
-    if (linkedinUrl && !imported.personal.linkedin) imported.personal.linkedin = linkedinUrl;
+    li = fromLiBox?.kind === 'linkedin' ? fromLiBox : null;
+    cv = li ? fromCvBox : fromLiBox && fromCvBox ? fromCvBox : fromLiBox || fromCvBox;
+    // Two CVs and no LinkedIn export: the LinkedIn-box file leads.
+    if (!li && fromLiBox && fromCvBox) li = fromLiBox;
   }
+
+  // LinkedIn first; the CV only adds what LinkedIn does not have.
+  let imported = (li || cv).resume;
+  let addedFromCv = [];
+  if (li && cv) ({ resume: imported, added: addedFromCv } = mergeResumes(li.resume, cv.resume));
+  imported = parseResumeJson(imported);
+  if (linkedinUrl && !imported.personal.linkedin) imported.personal.linkedin = linkedinUrl;
+
+  const liIsLinkedIn = li?.kind === 'linkedin';
+  const source = liIsLinkedIn && cv ? 'linkedin-pdf+resume' : liIsLinkedIn ? 'linkedin-pdf' : 'resume';
+  const { found, status, missing } = importStatusOf(imported);
+  const report = {
+    source,
+    status,
+    found,
+    missing,
+    files: { linkedin: liIsLinkedIn, cv: Boolean(cv) || (Boolean(li) && !liIsLinkedIn) },
+    addedFromCv: addedFromCv.length,
+    warnings,
+    note:
+      liIsLinkedIn && cv
+        ? `Your LinkedIn profile was read, and your CV added ${addedFromCv.length} item(s) LinkedIn did not have. Review every section before continuing.`
+        : liIsLinkedIn
+          ? 'Your LinkedIn profile was read. Review every section before continuing.'
+          : 'Your CV was read. Review every section before continuing.',
+  };
 
   const doc = await getDoc(req.user._id, { create: true });
-  let master = parseResumeJson(imported);
-  let added = [];
+  let master = imported;
+  let added = addedFromCv.map((a) => `from CV — ${a}`);
   if (mode === 'merge' && doc.master) {
-    ({ resume: master, added } = mergeResumes(parseResumeJson(doc.master), master));
+    let mergedNew;
+    ({ resume: master, added: mergedNew } = mergeResumes(parseResumeJson(doc.master), imported));
     master = parseResumeJson(master);
+    added = mergedNew;
     report.merged = true;
-    report.note = added.length ? `Added ${added.length} item(s) that were not already in your profile. Nothing you had already reviewed was changed.` : 'Nothing new was found to add to your profile.';
+    report.note = mergedNew.length ? `Added ${mergedNew.length} item(s) that were not already in your profile. Nothing you had already reviewed was changed.` : 'Nothing new was found to add to your profile.';
   }
 
   doc.master = master;
   doc.consent = { ...(doc.consent?.toObject?.() || doc.consent || {}), dataProcessing: consentRecord(req) };
   doc.studio = {
     ...(doc.studio?.toObject?.() || doc.studio || {}),
-    importSource: report.source,
-    importStatus: report.status,
+    importSource: source,
+    importStatus: status,
     importedAt: new Date(),
     importAdded: added.slice(0, 200),
     linkedinUrl: linkedinUrl || doc.studio?.linkedinUrl || '',

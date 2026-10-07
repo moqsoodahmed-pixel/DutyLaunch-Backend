@@ -481,6 +481,6 @@ export async function generateJobDescription(resume, { jobTitle, company, indust
   return {
     jobTitle: parsed.data.jobTitle || jobTitle || '',
     description: parsed.data.description,
-    note: 'Written by AI from your LinkedIn profile. For an exact Job Match score, paste the real job posting instead.',
+    note: 'Written by AI from your profile. For an exact Job Match score, paste the real job posting instead.',
   };
 }

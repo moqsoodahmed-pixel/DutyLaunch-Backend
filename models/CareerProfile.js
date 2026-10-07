@@ -123,7 +123,7 @@ const careerProfileSchema = new mongoose.Schema(
        other data are stored here; every other step is computed from saved
        versions, cover letters and interview sessions. */
     studio: {
-      importSource: { type: String, enum: ['linkedin-pdf', 'resume', 'manual', ''], default: '' },
+      importSource: { type: String, enum: ['linkedin-pdf', 'resume', 'linkedin-pdf+resume', 'manual', ''], default: '' },
       importStatus: { type: String, enum: ['imported', 'partial', 'manual-needed', ''], default: '' },
       importedAt: Date,
       importAdded: [{ type: String, maxlength: 200 }],
