@@ -411,13 +411,15 @@ export const analyzeJob = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => {
   const doc = await getProfileDoc(req.user._id);
   if (!doc) {
-    return sendSuccess(res, { message: 'No career profile yet', data: { exists: false } });
+    return sendSuccess(res, { message: 'No career profile yet', data: { exists: false, identityName: req.user?.resumeIdentity?.name || null } });
   }
 
   return sendSuccess(res, {
     message: 'Career profile',
     data: {
       exists: true,
+      // The name this account's resumes are locked to (null until first save).
+      identityName: req.user?.resumeIdentity?.name || null,
       master: doc.master,
       profile: doc.profile,
       preferences: doc.preferences,

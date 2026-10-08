@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { applyResumeIdentity } from '../utils/resumeIdentity.js';
 import { consentRecordSchema } from '../utils/consent.js';
 
 /**
@@ -180,6 +181,13 @@ careerProfileSchema.methods.latestVersion = function latestVersion() {
 
 careerProfileSchema.virtual('versionCount').get(function versionCount() {
   return this.versions?.length || 0;
+});
+
+/* One account = one person's resume: whatever saved this document, the
+   resume (and every version) keeps the account's locked name. */
+careerProfileSchema.pre('save', async function lockResumeName() {
+  const { nameReset } = await applyResumeIdentity(this, mongoose.model('User'));
+  this.$locals.nameReset = nameReset;
 });
 
 careerProfileSchema.set('toJSON', { virtuals: true });
