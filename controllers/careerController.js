@@ -226,8 +226,12 @@ export const parseUpload = asyncHandler(async (req, res) => {
     throw ApiError.badRequest('Attach a CV file or paste your resume text.');
   }
 
+  // Resume Builder only needs the data: leave the saved profile alone and
+  // skip the (paid) MagicalAPI check.
+  const builderOnly = req.body?.purpose === 'builder';
+
   // Signed in: this becomes the master profile and the immutable v1.
-  if (req.user) {
+  if (req.user && !builderOnly) {
     const doc = await getProfileDoc(req.user._id, { create: true });
 
     doc.master = resume;
@@ -253,7 +257,7 @@ export const parseUpload = asyncHandler(async (req, res) => {
 
   // Score with MagicalAPI in the background: the upload returns now, and
   // /career/analyze waits for this result (up to 15s) before scoring.
-  if (req.file && req.user) {
+  if (req.file && req.user && !builderOnly) {
     const userId = String(req.user._id);
     const job = analyzeWithMagicalApi({
       buffer: req.file.buffer,

@@ -25,7 +25,7 @@ import { CareerProfile, ScoringConfig, CoverLetter, InterviewSession, COVER_LETT
 import { parseResumeText, parseResumeJson, analyzeCandidate, generateCoverLetter } from '../services/careerIntelligence/index.js';
 import { extractText } from '../services/careerIntelligence/resumeParser.js';
 import { looksLikeLinkedInExport, parseLinkedInText, mergeResumes, normaliseLinkedInUrl } from '../services/careerIntelligence/linkedinImport.js';
-import { generateTop10, regenerateQuestion, planMockQuestions, evaluateAnswer, buildMockReport, parseModelJson, generateJobDescription } from '../services/careerIntelligence/studioAi.js';
+import { generateTop10, regenerateQuestion, planMockQuestions, evaluateAnswer, buildMockReport, parseModelJson, generateJobDescription, generateBuilderSuggestions } from '../services/careerIntelligence/studioAi.js';
 import { callModel, aiConfigured, aiStatus } from '../services/careerIntelligence/aiClient.js';
 import { buildPrompt, buildRewriteContext } from '../services/careerIntelligence/rewriter.js';
 import { sendDocument, safeFilename } from '../services/documents/documentRenderer.js';
@@ -408,6 +408,23 @@ export const downloadResumeDocument = asyncHandler(async (req, res) => {
     filename: safeFilename(resume.personal?.name || 'Candidate', 'Resume', version.label),
     inline,
   });
+});
+
+/**
+ * POST /api/studio/suggestions — Resume Builder wizard examples:
+ * { kind: 'bullets' | 'skills' | 'summary', jobTitle, experienceLevel?, details? }
+ */
+export const builderSuggestions = asyncHandler(async (req, res) => {
+  const { kind, jobTitle, experienceLevel, details } = req.body || {};
+  if (!aiConfigured()) throw new ApiError(503, 'AI suggestions are not available right now. Use the examples or write your own.');
+  let items;
+  try {
+    items = await generateBuilderSuggestions({ kind, jobTitle, experienceLevel, details });
+  } catch (err) {
+    logger.error(`[studio] builder suggestions failed: ${err.message}`);
+    throw new ApiError(503, 'AI suggestions are busy right now. Use the examples or write your own.');
+  }
+  sendSuccess(res, { message: 'Suggestions', data: { kind, jobTitle, items } });
 });
 
 /**

@@ -28,6 +28,20 @@ const importSchema = z.object({
 const linkedinUrlSchema = z.object({ url: s(300) });
 const resumeBody = z.object({ resume: z.record(z.any()).optional(), mode: z.enum(['replace']).optional() });
 const manualSchema = z.object({ consent: consentField, resume: z.record(z.any()), mode: z.enum(['replace']).optional() });
+const suggestionsSchema = z.object({
+  kind: z.enum(['bullets', 'skills', 'summary']),
+  jobTitle: opt(160),
+  experienceLevel: opt(40),
+  details: z
+    .object({
+      name: opt(120),
+      profession: opt(160),
+      jobs: z.array(z.string().trim().max(200)).max(10).optional(),
+      education: z.array(z.string().trim().max(200)).max(6).optional(),
+      skills: z.array(z.string().trim().max(80)).max(40).optional(),
+    })
+    .optional(),
+});
 const jobDescriptionSchema = z.object({ jobTitle: opt(160), company: opt(160), industry: opt(120), experienceLevel: opt(40) });
 const coverLetterSchema = z.object({
   versionId: objectId, jobTitle: opt(160), company: opt(160), jobDescription: z.string().min(40, 'Paste the full job description').max(20000),
@@ -61,6 +75,9 @@ router.get('/profile-document', resumeLimiter, studio.downloadProfileDocument);
 router.get('/versions/:versionId/document', resumeLimiter, studio.downloadResumeDocument);
 
 /* Step 6: cover letters */
+// Resume Builder wizard — example bullets, skills and summaries for a job title
+router.post('/suggestions', aiLimiter, validate(suggestionsSchema), studio.builderSuggestions);
+
 // Step 4 — AI-written target job description from the confirmed profile
 router.post('/job-description', aiLimiter, validate(jobDescriptionSchema), studio.suggestJobDescription);
 

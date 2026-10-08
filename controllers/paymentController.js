@@ -1,9 +1,11 @@
 import crypto from 'node:crypto';
+import mongoose from 'mongoose';
 import { CVPackage, Course, Payment } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { logger } from '../utils/logger.js';
+import { FREE_TEMPLATE_IDS, PAID_TEMPLATE_IDS, canonicalTemplateId, templateInfo, templatePrice } from '../config/templates.js';
 import {
   createRazorpayOrder,
   razorpayConfigured,
@@ -36,7 +38,16 @@ export function priceBreakdown(rupees) {
 }
 
 /** Looks up the item and its price on the server. The browser never sends a price. */
-async function resolveItem(itemType, itemId) {
+async function resolveItem(itemType, itemId, user) {
+  if (itemType === 'template') {
+    const tpl = templateInfo(itemId);
+    if (!tpl) throw ApiError.badRequest('Unknown template.');
+    if (tpl.free) throw ApiError.badRequest('This template is free — no payment needed.');
+    const owned = await Payment.exists({ user: user._id, itemType: 'template', itemKey: tpl.id, status: 'paid' });
+    if (owned) throw ApiError.badRequest('You already own this template.');
+    return { name: `${tpl.name} template`, price: templatePrice(), currency: 'INR', key: tpl.id };
+  }
+  if (!mongoose.isValidObjectId(itemId)) throw ApiError.badRequest('Invalid item.');
   if (itemType === 'cv-package') {
     const pkg = await CVPackage.findOne({ _id: itemId, status: 'published' }).lean();
     if (!pkg) throw ApiError.notFound('This CV bundle is no longer available.');
@@ -66,6 +77,25 @@ export const getConfig = asyncHandler(async (req, res) => {
       enabled: razorpayConfigured(),
       mode: razorpayMode(),
       gst: { exclusive, rate },
+      templates: { free: FREE_TEMPLATE_IDS, paid: PAID_TEMPLATE_IDS, price: templatePrice() },
+    },
+  });
+});
+
+/**
+ * GET /api/payments/entitlements — what the signed-in user has paid for.
+ * The Resume Builder uses this to decide which paid templates are unlocked;
+ * nothing is unlocked from the browser alone.
+ */
+export const entitlements = asyncHandler(async (req, res) => {
+  const paid = await Payment.find({ user: req.user._id, itemType: 'template', status: 'paid' }).select('itemKey').lean();
+  const owned = [...new Set(paid.map((p) => canonicalTemplateId(p.itemKey)).filter(Boolean))];
+  sendSuccess(res, {
+    data: {
+      templates: owned,
+      freeTemplates: FREE_TEMPLATE_IDS,
+      paidTemplates: PAID_TEMPLATE_IDS,
+      templatePrice: templatePrice(),
     },
   });
 });
@@ -73,7 +103,7 @@ export const getConfig = asyncHandler(async (req, res) => {
 /** POST /api/payments/orders  { itemType, itemId } */
 export const createOrder = asyncHandler(async (req, res) => {
   const { itemType, itemId } = req.body;
-  const item = await resolveItem(itemType, itemId);
+  const item = await resolveItem(itemType, itemId, req.user);
   const breakdown = priceBreakdown(item.price);
   if (breakdown.amount < 100) throw ApiError.badRequest('The amount is below the minimum the payment gateway accepts.');
 
@@ -83,13 +113,13 @@ export const createOrder = asyncHandler(async (req, res) => {
     amount: breakdown.amount,
     currency: item.currency,
     receipt,
-    notes: { userId: String(req.user._id), itemType, itemId: String(itemId), item: item.name.slice(0, 200) },
+    notes: { userId: String(req.user._id), itemType, itemId: String(item.key || itemId), item: item.name.slice(0, 200) },
   });
 
   const payment = await Payment.create({
     user: req.user._id,
     itemType,
-    itemId,
+    ...(item.key ? { itemKey: item.key } : { itemId }),
     itemName: item.name,
     ...breakdown,
     currency: item.currency,

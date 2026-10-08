@@ -279,6 +279,9 @@ export const careerParseSchema = z.object({
   // Multipart uploads arrive on req.file; pasted text arrives here.
   text: z.string().trim().max(200000).optional(),
   consent: consentField,
+  // 'builder': only read the file for the Resume Builder — do not replace
+  // the saved career profile or start a MagicalAPI check.
+  purpose: z.enum(['profile', 'builder']).optional(),
 });
 
 export const careerAnalyzeSchema = z.object({

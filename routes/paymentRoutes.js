@@ -10,9 +10,11 @@ const router = Router();
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 const razorpayId = (prefix) => z.string().trim().regex(new RegExp(`^${prefix}_[A-Za-z0-9]+$`), 'Invalid id').max(64);
 
+// itemId: a database id for CV bundles and courses, or a template id such
+// as "dl-modern" for Resume Builder templates (checked in the controller).
 const createOrderSchema = z.object({
   itemType: z.enum(PAYMENT_ITEM_TYPES),
-  itemId: objectId,
+  itemId: z.union([objectId, z.string().trim().regex(/^[a-z0-9-]{2,40}$/, 'Invalid id')]),
 });
 
 const verifySchema = z.object({
@@ -36,5 +38,6 @@ router.post('/orders', protect, validate(createOrderSchema), payments.createOrde
 router.post('/verify', protect, validate(verifySchema), payments.verifyPayment);
 router.post('/failed', protect, validate(failedSchema), payments.markFailed);
 router.get('/mine', protect, payments.myPayments);
+router.get('/entitlements', protect, payments.entitlements);
 
 export default router;

@@ -9,13 +9,16 @@ import mongoose from 'mongoose';
  * from the browser.
  */
 export const PAYMENT_STATUS = ['created', 'paid', 'failed'];
-export const PAYMENT_ITEM_TYPES = ['cv-package', 'course'];
+export const PAYMENT_ITEM_TYPES = ['cv-package', 'course', 'template'];
 
 const paymentSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     itemType: { type: String, enum: PAYMENT_ITEM_TYPES, required: true },
-    itemId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    // Database id for CV bundles and courses; for templates, itemKey holds
+    // the template id (e.g. "dl-modern") instead.
+    itemId: { type: mongoose.Schema.Types.ObjectId },
+    itemKey: { type: String, trim: true, maxlength: 60, index: true },
     itemName: { type: String, required: true, trim: true, maxlength: 160 },
 
     // All in paise. amount = baseAmount + gstAmount.
@@ -44,7 +47,8 @@ paymentSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id,
     itemType: this.itemType,
-    itemId: this.itemId,
+    itemId: this.itemId || this.itemKey,
+    itemKey: this.itemKey,
     itemName: this.itemName,
     baseAmount: this.baseAmount,
     gstAmount: this.gstAmount,

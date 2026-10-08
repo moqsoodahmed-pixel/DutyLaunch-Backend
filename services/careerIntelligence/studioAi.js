@@ -484,3 +484,50 @@ export async function generateJobDescription(resume, { jobTitle, company, indust
     note: 'Written by AI from your profile. For an exact Job Match score, paste the real job posting instead.',
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Resume Builder wizard — pre-written examples for any job title
+ *
+ * Like the example lists in guided resume builders: work-history bullet
+ * points, skills, or professional summaries for a job title. Summaries are
+ * personalised from what the candidate has already entered; bullets and
+ * skills are generic examples the candidate picks from and edits.
+ * ------------------------------------------------------------------ */
+
+const SUGGESTION_RULES = {
+  bullets: 'Return JSON: { "items": ["", ...] } with 8 resume bullet points for this job title. Each starts with a strong action verb, is one sentence, 12–22 words, and describes a realistic duty or achievement. Use [number] or [percentage] placeholders instead of inventing figures.',
+  skills: 'Return JSON: { "items": ["", ...] } with 14 short skills (1–4 words each) employers look for in this job title: a mix of job-specific, tool and soft skills. No duplicates.',
+  summary: 'Return JSON: { "items": ["", "", ""] } with 3 different professional summaries (2–4 sentences, 40–70 words each) for a resume. Write in first-person implied style (no "I"). Use only facts from CANDIDATE DETAILS; where a detail is missing, stay general — never invent employers, years, degrees or numbers.',
+};
+
+const suggestionsOut = z.object({ items: z.array(z.string().trim().min(2).max(600)).min(1).max(20) });
+
+export async function generateBuilderSuggestions({ kind, jobTitle, experienceLevel, details } = {}) {
+  const facts = details
+    ? [
+        'CANDIDATE DETAILS (entered by the candidate)',
+        `Name: ${details.name || '(not given)'}`,
+        `Target / current job title: ${details.profession || jobTitle || '(not given)'}`,
+        `Jobs: ${(details.jobs || []).slice(0, 5).join('; ') || '(none — may be a fresher)'}`,
+        `Education: ${(details.education || []).slice(0, 3).join('; ') || '(not given)'}`,
+        `Skills: ${(details.skills || []).slice(0, 15).join(', ') || '(not given)'}`,
+      ].join('\n')
+    : '';
+  const messages = [
+    { role: 'system', content: 'You write concise, professional resume content for job seekers in India and the Gulf. Plain English. Output only JSON.' },
+    {
+      role: 'user',
+      content: [`Job title: ${jobTitle || '(general)'}`, experienceLevel ? `Experience level: ${experienceLevel}` : '', facts, '', SUGGESTION_RULES[kind]].filter(Boolean).join('\n'),
+    },
+  ];
+  const reply = await callModel(messages, { json: true, task: 'builder-suggestions', maxOutputTokens: 1500 });
+  const parsed = suggestionsOut.safeParse(parseModelJson(reply));
+  if (!parsed.success) throw new Error('The model returned unusable suggestions.');
+  const seen = new Set();
+  return parsed.data.items.filter((t) => {
+    const k = t.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}

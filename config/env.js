@@ -47,6 +47,8 @@ const optionalDefaults = {
   // 'exclusive' adds GST_RATE% at checkout, 'inclusive' charges the shown price.
   GST_PRICING: 'exclusive',
   GST_RATE: '18',
+  // Price of each paid Resume Builder template, in rupees before GST.
+  TEMPLATE_PRICE: '199',
 };
 
 /**
