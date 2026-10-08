@@ -461,8 +461,26 @@ const TONE_GUIDE = {
 const letterText = (l) => [l.salutation, l.body, l.closing, l.candidateName].filter(Boolean).join('\n\n');
 
 export const createCoverLetter = asyncHandler(async (req, res) => {
-  const { versionId, jobTitle, company, jobDescription, tone = 'professional' } = req.body || {};
-  if (!String(jobDescription || '').trim()) throw ApiError.badRequest('Paste the job description — the letter is tailored to it.');
+  const { versionId, jobTitle, company, tone = 'professional' } = req.body || {};
+  // A one-line "description" is not enough to tailor to; treat it as missing.
+  let jobDescription = String(req.body?.jobDescription || '').trim();
+  if (jobDescription.length < 40) jobDescription = '';
+  let jobDescriptionSource = 'user';
+  if (!jobDescription && !String(jobTitle || '').trim()) {
+    throw ApiError.badRequest('Add the job title, or paste the job description — the letter is tailored to it.');
+  }
+  // Only a job title: the AI first reads the candidate's saved resume and
+  // writes a typical description for that role, then the letter from it.
+  if (!jobDescription) {
+    const base = await context(req.user._id, { versionId, jobTitle, company });
+    try {
+      jobDescription = (await generateJobDescription(base.resume, { ...genOpts(base), jobTitle, company })).description;
+      jobDescriptionSource = 'ai';
+    } catch (err) {
+      logger.error(`[studio] cover letter: job description generation failed: ${err.message}`);
+      throw new ApiError(503, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.');
+    }
+  }
   const ctx = await context(req.user._id, { versionId, jobDescription, jobTitle, company });
   const generated = await generateCoverLetter(ctx.resume, {
     ...genOpts(ctx),
@@ -480,7 +498,11 @@ export const createCoverLetter = asyncHandler(async (req, res) => {
   sendSuccess(res, {
     statusCode: 201,
     message: 'Cover letter created',
-    data: { coverLetter: letter, engineNote: generated.engine === 'rules' ? 'AI generation is unavailable right now, so this letter was assembled from your own CV lines. Edit it before sending.' : generated.note },
+    data: {
+      coverLetter: letter,
+      jobDescriptionSource,
+      engineNote: generated.engine === 'rules' ? 'AI generation is unavailable right now, so this letter was assembled from your own CV lines. Edit it before sending.' : generated.note,
+    },
   });
 });
 

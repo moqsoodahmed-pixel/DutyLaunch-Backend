@@ -122,6 +122,36 @@ function buildLinkedInFallback(resume, profile) {
  * Cover letter (spec §25)
  * ------------------------------------------------------------------ */
 
+/* The model sometimes ends the body with its own sign-off and a
+   "[Your Name]" placeholder; the letter already gets a closing line and
+   the candidate's real name, so those are removed here. */
+const SIGN_OFF = /^(yours\s+(sincerely|faithfully|truly)|sincerely(\s+yours)?|(best|kind|warm)(est)?\s+regards|regards|thank\s+you|thanks|respectfully|with\s+gratitude)[,.!]?$/i;
+export function cleanLetterBody(body, name = '') {
+  const nameKey = name.trim().toLowerCase();
+  const paras = String(body || '')
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  // Drop trailing sign-off / name / placeholder paragraphs.
+  while (paras.length) {
+    const last = paras[paras.length - 1];
+    const lines = last.split('\n').map((l) => l.trim()).filter(Boolean);
+    const onlySignOff = lines.every((l) => SIGN_OFF.test(l) || /^\[[^\]]{2,40}\]$/.test(l) || (nameKey && l.toLowerCase() === nameKey));
+    if (onlySignOff) paras.pop();
+    else break;
+  }
+  // Any placeholder left inside the text: use the real name where it is one.
+  return paras
+    .join('\n\n')
+    .replace(/\[(?:your|my|candidate'?s?)\s+(?:full\s+)?name\]/gi, name || '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+const cleanClosing = (c) => {
+  const t = String(c || '').trim();
+  return t && SIGN_OFF.test(t) ? t : 'Yours sincerely,';
+};
+
 export async function generateCoverLetter(resume, { profile, jobIntel, keywordResult, company, hiringManager, tone = 'professional', confirmedFacts = [] }) {
   if (!jobIntel) throw ApiError.badRequest('A target job description is needed to write a targeted cover letter.');
 
@@ -139,6 +169,8 @@ export async function generateCoverLetter(resume, { profile, jobIntel, keywordRe
     '3. A second relevant capability, and how it maps to a stated responsibility.',
     '4. A short, direct close.',
     '',
+    'The "body" is ONLY the four paragraphs: no greeting, no sign-off line ("Sincerely", "Best regards"), no name, and never placeholders in square brackets such as [Your Name] or [Company].',
+    '',
     'Return JSON: { "salutation": "<greeting>", "body": "<the four paragraphs, separated by \\n\\n>", "closing": "<sign-off line>", "subjectLine": "<for an email application>" }',
   ].join('\n');
 
@@ -148,8 +180,8 @@ export async function generateCoverLetter(resume, { profile, jobIntel, keywordRe
     return {
       engine: 'model',
       salutation: data.salutation || (hiringManager ? `Dear ${hiringManager},` : 'Dear Hiring Manager,'),
-      body: String(data.body || ''),
-      closing: data.closing || 'Yours sincerely,',
+      body: cleanLetterBody(String(data.body || ''), resume.personal?.name || ''),
+      closing: cleanClosing(data.closing),
       subjectLine: data.subjectLine || `Application: ${jobIntel.role?.jobTitle || ''}`.trim(),
       candidateName: resume.personal?.name || '',
       note: 'This letter references only your own verified experience and the job description. No claims are made about the employer.',

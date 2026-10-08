@@ -44,7 +44,9 @@ const suggestionsSchema = z.object({
 });
 const jobDescriptionSchema = z.object({ jobTitle: opt(160), company: opt(160), industry: opt(120), experienceLevel: opt(40) });
 const coverLetterSchema = z.object({
-  versionId: objectId, jobTitle: opt(160), company: opt(160), jobDescription: z.string().min(40, 'Paste the full job description').max(20000),
+  // jobDescription is optional: with only a job title, the AI writes a
+  // typical description from the candidate's saved resume first.
+  versionId: objectId, jobTitle: opt(160), company: opt(160), jobDescription: z.string().trim().max(20000).optional(),
   tone: z.enum(COVER_LETTER_TONES).optional(),
 });
 const coverLetterUpdate = z.object({ title: opt(160), content: z.string().max(12000).optional(), company: opt(160), jobTitle: opt(160) });
