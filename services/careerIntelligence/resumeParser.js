@@ -131,6 +131,36 @@ const SECTION_PATTERNS = [
   ['personal', /^(personal\s+(?:details?|information|profile)|declaration)$/i],
 ];
 
+/* Section headings printed by DutyLaunch's own resume templates (and
+   similar wording on other resumes), so a resume downloaded from the
+   Resume Builder can be uploaded again and read back correctly. */
+const TEMPLATE_HEADINGS = {
+  experience: ['professional experience', 'technical & engineering experience', 'executive leadership & board history', 'professional career history', 'investment banking & transaction experience', 'product design & architecture experience', 'engineering experience & internships', 'work experience & internships'],
+  skills: ['core competencies & functional expertise', 'core competencies & leadership capabilities', 'core systems architecture & open source', 'design tooling & systems methodologies', 'executive capabilities & governance', 'quantitative & financial core competencies', 'technical proficiencies', 'skills & competencies', 'key skills & tools'],
+  education: ['education & academic honors', 'education & academic honours', 'academic credentials', 'executive education', 'education & academic track', 'education & training'],
+  certifications: ['certifications & credentials', 'certifications & licensures', 'licenses & certifications', 'licences & certifications', 'verified certifications', 'board credentials & fellowships', 'credentials & honors', 'certifications & training'],
+  summary: ['professional summary', 'design philosophy & professional summary', 'executive financial profile', 'profile summary'],
+  projects: ['strategic programs & transformations', 'board directorships & key transformations', 'featured design systems & case studies', 'selected m&a & financing mandates', 'strategic m&a & capital deployment', 'key projects & case studies'],
+  awards: ['executive honors & awards', 'deal honors & recognitions', 'design awards & speaking', 'honors & hackathons', 'industry recognitions', 'patents & honors', 'executive recognition & publications', 'honors & awards', 'awards & recognitions'],
+  _head: ['contact info', 'contact', 'contact details', 'contact information'],
+};
+const TEMPLATE_HEADING_KEY = new Map(
+  Object.entries(TEMPLATE_HEADINGS).flatMap(([key, list]) => list.map((h) => [h, key]))
+);
+const normHeading = (t) => t.toLowerCase().replace(/\s+and\s+/g, ' & ').replace(/\s+/g, ' ').trim();
+
+/**
+ * PDF text extraction glues right-aligned text onto the line it sits on:
+ * "Web developer2023 – 2025", "Skyup digital solutions llpBengaluru".
+ * Put the missing space back (never inside emails or web addresses).
+ */
+function unglue(line) {
+  if (!line || /@|https?:|www\.|\.com\b|linkedin/i.test(line)) return line;
+  return line
+    .replace(new RegExp(`([A-Za-z.)'’])((?:19|20)\\d{2}\\b|(?:${MONTH_ALT})[a-z]*\\.?\\s*\\d{4})`, 'g'), '$1 $2')
+    .replace(/(^|\s)([a-z.]{3,})([A-Z][a-z]{2,}(?:\s[A-Z][a-z]+)?)$/, '$1$2 · $3');
+}
+
 function looksLikeHeading(line) {
   const t = line.trim();
   if (!t || t.length > 60) return false;
@@ -147,6 +177,8 @@ function headingKey(line) {
     .replace(/[\s:_\-–—*#|]+$/, '')
     .trim();
   if (!cleaned) return null;
+  const known = TEMPLATE_HEADING_KEY.get(normHeading(cleaned));
+  if (known) return known;
   for (const [key, re] of SECTION_PATTERNS) {
     if (re.test(cleaned)) return key;
   }
@@ -159,7 +191,7 @@ function headingKey(line) {
  * contact block usually live).
  */
 export function segmentSections(text) {
-  const lines = text.split(/\r?\n/).map((l) => l.replace(/\t/g, ' ').replace(/\s{2,}/g, ' ').trimEnd());
+  const lines = text.split(/\r?\n/).map((l) => unglue(l.replace(/\t/g, ' ').replace(/\s{2,}/g, ' ').trimEnd()));
   const sections = { _head: [] };
   let current = '_head';
 
@@ -189,16 +221,24 @@ export function segmentSections(text) {
 
 const NAME_STOP = /(curriculum vitae|resume|cv|profile|contact|phone|email|address|mobile)/i;
 
-function looksLikeName(line) {
+function looksLikeName(line, { first = false } = {}) {
   const t = line.trim();
   if (!t || t.length < 3 || t.length > 48) return false;
   if (NAME_STOP.test(t)) return false;
-  if (EMAIL_RE.test(t) || /\d{4}/.test(t)) return false;
+  if (EMAIL_RE.test(t) || /\d/.test(t)) return false;
   const words = t.split(/\s+/);
   if (words.length < 1 || words.length > 5) return false;
   // Title Case or ALL CAPS, letters only (allow . ' -)
-  return words.every((w) => /^[A-Z][a-zA-Z.'-]*$/.test(w) || /^[A-Z.'-]+$/.test(w));
+  if (words.every((w) => /^[A-Z][a-zA-Z.'-]*$/.test(w) || /^[A-Z.'-]+$/.test(w))) return true;
+  // The very first line of a resume is almost always the name, even when
+  // typed in lower case ("Srinivas sutar"): accept 2–4 plain words there.
+  return first && words.length >= 2 && words.length <= 4 && words.every((w) => /^[A-Za-z][a-zA-Z.'-]*$/.test(w)) && /^[A-Z]/.test(t);
 }
+
+/** A contact line is often "email | phone | city | site": look at each piece. */
+const contactPieces = (lines) => lines.flatMap((l) => l.split(/\s*[|•·]\s*|\s{3,}/)).map((p) => p.trim()).filter(Boolean);
+
+const INDIAN_MOBILE = /(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/;
 
 function extractContact(headLines, fullText) {
   const head = headLines.join('\n');
@@ -206,15 +246,17 @@ function extractContact(headLines, fullText) {
 
   const email = (scope.match(EMAIL_RE) || fullText.match(EMAIL_RE) || [''])[0];
   const linkedin = (scope.match(LINKEDIN_RE) || fullText.match(LINKEDIN_RE) || [''])[0];
+  const pieces = contactPieces(scope.split('\n'));
 
-  // Phone: look at lines that aren't dominated by a date range, so
-  // "2019 - 2023" is never read as a number.
+  // Phone: check each piece of the contact line on its own (a whole line
+  // like "email | 9538281101 | city 560001" has too many digits to judge),
+  // never a date range, never part of an email or a PIN code.
   let phone = '';
-  for (const line of scope.split('\n')) {
-    if (DATE_RANGE_RE.test(line)) continue;
-    const digits = line.replace(/[^\d]/g, '');
+  for (const piece of pieces) {
+    if (EMAIL_RE.test(piece) || DATE_RANGE_RE.test(piece) || URL_RE.test(piece)) continue;
+    const digits = piece.replace(/[^\d]/g, '');
     if (digits.length < 8 || digits.length > 15) continue;
-    const m = line.match(PHONE_RE);
+    const m = piece.match(INDIAN_MOBILE) || piece.match(PHONE_RE);
     if (m && m[0].replace(/[^\d]/g, '').length >= 8) {
       phone = m[0].trim();
       break;
@@ -233,27 +275,40 @@ function extractContact(headLines, fullText) {
 
   // Name: first line in the head that reads like a person's name.
   let name = '';
-  for (const line of headLines.slice(0, 8)) {
-    if (looksLikeName(line)) {
-      name = line.trim();
+  let nameIndex = -1;
+  const firstFilled = headLines.findIndex((l) => l.trim());
+  for (let i = 0; i < Math.min(headLines.length, 8); i += 1) {
+    if (looksLikeName(headLines[i], { first: i === firstFilled })) {
+      name = headLines[i].trim();
+      nameIndex = i;
       break;
     }
   }
 
-  // Location: a line with a comma and no digits-heavy content, near the top.
+  // Location: a piece with a comma, letters, and optionally a PIN code
+  // ("bengaluru, India 560001"), near the top.
   let location = '';
-  for (const line of headLines.slice(0, 10)) {
-    const t = line.trim();
+  for (const piece of pieces) {
+    const t = piece.replace(/^[|•\-\s]+/, '').trim();
     if (!t || t === name) continue;
-    if (EMAIL_RE.test(t) || LINKEDIN_RE.test(t)) continue;
-    if (/\d{5,}/.test(t)) continue;
-    if (/,/.test(t) && t.length < 70 && /^[A-Za-z\s,.\-()]+$/.test(t)) {
-      location = t.replace(/^[|•\-\s]+/, '').trim();
+    if (EMAIL_RE.test(t) || LINKEDIN_RE.test(t) || URL_RE.test(t)) continue;
+    if (/,/.test(t) && t.length < 70 && /^[A-Za-z\s,.\-()]+(?:\s*\d{6})?$/.test(t)) {
+      location = t;
       break;
     }
   }
 
-  return { name, email, phone, location, linkedin, website, headline: '' };
+  // Headline: the short line right under the name ("Web Developer"),
+  // if it is not contact details or a section heading.
+  let headline = '';
+  if (nameIndex >= 0) {
+    const next = (headLines.slice(nameIndex + 1).find((l) => l.trim()) || '').trim();
+    if (next && next.length <= 70 && !EMAIL_RE.test(next) && !URL_RE.test(next) && !/\d{5,}/.test(next) && !/[|•]/.test(next) && next !== location && !headingKey(next)) {
+      headline = next;
+    }
+  }
+
+  return { name, email, phone, location, linkedin, website, headline };
 }
 
 /* ------------------------------------------------------------------ *
@@ -507,7 +562,17 @@ function parseExperience(lines) {
       role.current = dates.current;
 
       const bulletLines = block.lines.filter((l) => isBullet(l)).map(stripBullet);
-      const headerLines = block.lines.filter((l) => l.trim() && !isBullet(l)).slice(0, 3);
+      // Header = up to 3 short lines (title, company, dates). Stop at the
+      // first full sentence: in PDFs without bullet symbols, the first
+      // duty line would otherwise be swallowed into the header and lost.
+      const headerLines = [];
+      for (const l of block.lines.filter((x) => x.trim() && !isBullet(x))) {
+        if (headerLines.length >= 3) break;
+        const t = l.trim();
+        const sentence = /[.!?]$/.test(t) || t.split(/\s+/).length > 12;
+        if (sentence && headerLines.length) break;
+        headerLines.push(l);
+      }
 
       const { title, company, employmentType, leftovers } = readCompanyAndTitle(headerLines);
       role.title = title;
@@ -545,6 +610,9 @@ function parseExperience(lines) {
 const DEGREE_RE = /\b(ph\.?d|doctorate|m\.?b\.?a|m\.?tech|m\.?sc|m\.?a\b|m\.?com|m\.?s\b|masters?|b\.?tech|b\.?e\b|b\.?sc|b\.?a\b|b\.?com|b\.?b\.?a|b\.?c\.?a|m\.?c\.?a|bachelors?|diploma|associate degree|hsc|sslc|12th|10th|intermediate|secondary|higher secondary|pgdm|pgd|llb|llm|md\b|mbbs|ca\b|cfa|cpa)\b/i;
 const INSTITUTION_HINT = /(university|college|institute|school|academy|polytechnic|iit|nit|iim|bits|vtu|anna university|board)/i;
 
+/** DEGREE_RE without false hits on everyday "be" ("deemed to be university"). */
+const isDegree = (t) => DEGREE_RE.test(String(t || '').replace(/\b(?:to|will|can|may|must|would|should|could|shall|might)\s+be\b/gi, ' '));
+
 function parseEducation(lines) {
   if (!lines?.length) return [];
 
@@ -558,8 +626,13 @@ function parseEducation(lines) {
       return;
     }
     // A degree mention or a date starts a new entry when one is open.
-    const starts = DEGREE_RE.test(t) || INSTITUTION_HINT.test(t);
-    if (starts && block.length && (DEGREE_RE.test(block.join(' ')) || INSTITUTION_HINT.test(block.join(' ')))) {
+    // A new entry starts when this line repeats what the open entry already
+    // has (a second degree, or a second institution). "Degree" on one line
+    // and "University" on the next is ONE entry, not two.
+    const joined = block.join(' ');
+    const repeatsDegree = isDegree(t) && isDegree(joined);
+    const repeatsInstitution = INSTITUTION_HINT.test(t) && INSTITUTION_HINT.test(joined);
+    if (block.length && (repeatsDegree || repeatsInstitution)) {
       blocks.push(block);
       block = [t];
       return;
@@ -591,35 +664,55 @@ function parseEducation(lines) {
           .replace(DATE_RANGE_RE, '')
           .replace(/[|•]/g, ' ')
           .replace(/,\s*$/, '')
+          .replace(/\s+(?:19|20)\d{2}$/, '')
           .replace(/\s{2,}/g, ' ')
           .trim();
 
       const fragments = b
-        .flatMap((line) => line.split(/[,|•]|\s[-–—]\s/))
+        .flatMap((line) => line.split(/[,|•·]|\s[-–—]\s/))
         .map(clean)
         .filter((f) => f.length > 1 && !/^\d{4}$/.test(f));
 
+      let afterInstitution = false;
       for (const frag of fragments) {
-        if (!entry.degree && DEGREE_RE.test(frag)) {
+        if (!entry.degree && isDegree(frag)) {
           entry.degree = frag.slice(0, 120);
+          afterInstitution = false;
           continue;
         }
         if (!entry.institution && INSTITUTION_HINT.test(frag)) {
           entry.institution = frag.slice(0, 140);
+          afterInstitution = true;
+          continue;
+        }
+        // "University, Bengaluru" / "University · Bengaluru": a short place
+        // name right after the institution is its location, not the field.
+        if (afterInstitution && !entry.location && /^[A-Za-z][A-Za-z .'-]{1,40}$/.test(frag) && frag.split(/\s+/).length <= 3) {
+          entry.location = frag;
+        }
+        afterInstitution = false;
+      }
+
+      // "Master's degree in Computer Science" → degree + field.
+      if (entry.degree && !entry.field) {
+        const m = entry.degree.match(/^(.+?)\s+in\s+([A-Za-z&/ .'-]{3,60})$/i);
+        if (m) {
+          entry.degree = m[1].trim();
+          entry.field = m[2].trim();
         }
       }
 
       // Whatever is left between a degree and an institution is the field.
       if (!entry.field) {
         const leftover = fragments.find(
-          (f) => f !== entry.degree && f !== entry.institution && !/^\d/.test(f) && f.length > 2 && f.length < 60
+          (f) => f !== entry.degree && f !== entry.institution && f !== entry.location && !/^\d/.test(f) && f.length > 2 && f.length < 60
         );
         if (leftover && (entry.degree || entry.institution)) entry.field = leftover;
       }
 
       // Fall back to whole lines when the fragments told us nothing.
       if (!entry.degree) {
-        const line = b.find((l) => DEGREE_RE.test(l));
+        const line = b.find((l) => isDegree(l));
         if (line) entry.degree = clean(line).slice(0, 120);
       }
       if (!entry.institution) {
@@ -698,7 +791,13 @@ function parseSkills(skillLines, fullText) {
 
   // 2. Taxonomy terms found anywhere else in the CV, so a skill proved in
   //    an experience bullet still counts (spec §6).
-  detectSkillTerms(fullText).forEach(add);
+  //    Section headings are left out: "Core Competencies & Leadership
+  //    Capabilities" is a heading, not proof of a leadership skill.
+  const withoutHeadings = String(fullText || '')
+    .split(/\r?\n/)
+    .filter((l) => !(looksLikeHeading(l) && headingKey(l)))
+    .join('\n');
+  detectSkillTerms(withoutHeadings).forEach(add);
 
   return buckets;
 }
