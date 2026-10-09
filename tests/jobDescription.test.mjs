@@ -58,3 +58,14 @@ test('when the AI is down the call fails (the page then asks to paste the postin
   fakeAi('', 503);
   await assert.rejects(() => generateJobDescription(resume, { jobTitle: 'X' }));
 });
+
+test('the AI also reads the experience level from the resume (unknown values ignored)', async () => {
+  const DESC = 'About the role\n' + 'We build modern web apps with React and Node.js for clients across India. '.repeat(5);
+  fakeAi(JSON.stringify({ jobTitle: 'Frontend Developer', experienceLevel: 'Entry', description: DESC }));
+  let out = await generateJobDescription(resume, {});
+  assert.equal(out.experienceLevel, 'entry');
+  assert.match(lastBody.messages.map((m) => m.content).join('\n'), /experienceLevel/);
+  fakeAi(JSON.stringify({ jobTitle: 'Frontend Developer', experienceLevel: 'guru', description: DESC }));
+  out = await generateJobDescription(resume, { experienceLevel: 'mid' });
+  assert.equal(out.experienceLevel, 'mid', 'falls back to the given level');
+});

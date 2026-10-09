@@ -441,13 +441,16 @@ const LEVEL_TEXT = {
   lead: 'lead / manager',
 };
 
+const LEVELS = ['fresher', 'entry', 'mid', 'senior', 'lead'];
 const jobDescriptionOut = z.object({
   jobTitle: text(120),
   description: text(6000).refine((s) => s.length >= 200, 'description too short'),
+  experienceLevel: z.string().trim().toLowerCase().optional().catch(undefined),
 });
 
 const JOB_DESCRIPTION_RULES = [
-  'Return JSON: { "jobTitle": "", "description": "" }',
+  'Return JSON: { "jobTitle": "", "experienceLevel": "", "description": "" }',
+  '"experienceLevel" is the candidate\'s level for this role, judged ONLY from CANDIDATE FACTS (years and seniority of their jobs, education): one of "fresher" (no jobs yet), "entry" (0–2 years), "mid" (3–7 years), "senior" (8+ years), "lead" (manages teams). When TARGET gives an experience level, repeat it.',
   'Write ONE realistic job posting, the way an employer would publish it on a job board, for the role described in TARGET.',
   'If TARGET has no job title, choose the single most likely next role for this candidate from CANDIDATE FACTS (their headline, latest role, skills and education) and put it in "jobTitle". Otherwise repeat the given title.',
   'Use CANDIDATE FACTS only to understand the candidate\'s field and specialisation (for example MERN vs Java, SOC analyst vs pentester), so the posting is the kind of job they would apply for.',
@@ -480,6 +483,8 @@ export async function generateJobDescription(resume, { jobTitle, company, indust
   if (!parsed.success) throw new Error('The model returned an unusable job description.');
   return {
     jobTitle: parsed.data.jobTitle || jobTitle || '',
+    // The level the AI read from the resume; ignored unless it is a known one.
+    experienceLevel: LEVELS.includes(parsed.data.experienceLevel) ? parsed.data.experienceLevel : experienceLevel || '',
     description: parsed.data.description,
     note: 'Written by AI from your profile. For an exact Job Match score, paste the real job posting instead.',
   };
