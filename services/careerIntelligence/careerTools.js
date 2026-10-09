@@ -175,7 +175,10 @@ export async function generateCoverLetter(resume, { profile, jobIntel, keywordRe
   ].join('\n');
 
   try {
-    const reply = await callModel(buildPrompt(context, task), { task: 'cover-letter' });
+    // A one-page letter needs ~1,000 tokens. Reserving more makes the request
+    // count against the free per-minute token limits (Groq: 8,000/min) and
+    // get refused right after the AI job description is written.
+    const reply = await callModel(buildPrompt(context, task), { task: 'cover-letter', maxOutputTokens: 2000 });
     const data = parseJson(reply);
     return {
       engine: 'model',

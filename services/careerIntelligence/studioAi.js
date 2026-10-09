@@ -478,7 +478,7 @@ export async function generateJobDescription(resume, { jobTitle, company, indust
   ].join('\n');
   const task = ['Write a target job description for this candidate\'s next application.', '', linkedin, '', target, '', JOB_DESCRIPTION_RULES].join('\n');
 
-  const reply = await callModel(buildPrompt(ctx, task), { json: true, task: 'job-description', maxOutputTokens: 2000 });
+  const reply = await callModel(buildPrompt(ctx, task), { json: true, task: 'job-description', maxOutputTokens: 1600 });
   const parsed = jobDescriptionOut.safeParse(parseModelJson(reply));
   if (!parsed.success) throw new Error('The model returned an unusable job description.');
   return {
