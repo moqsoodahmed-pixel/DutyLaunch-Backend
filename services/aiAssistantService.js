@@ -3,6 +3,7 @@ import { companyProfile } from '../data/companyProfile.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { logger } from '../utils/logger.js';
+import { callModel, aiConfigured } from './careerIntelligence/aiClient.js';
 
 /* ------------------------------------------------------------------ *
  * 1. Live company data (MongoDB) — cached briefly so a burst of chat
@@ -323,6 +324,35 @@ export async function callGroq(messages, { fetchImpl = fetch } = {}) {
   throw ApiError.badRequest(
     'None of the configured AI models are available on this Groq account. Check https://api.groq.com/openai/v1/models with your key and set GROQ_MODEL in .env to a valid id.'
   );
+}
+
+/* ------------------------------------------------------------------ *
+ * 3b. Multi-provider assistant call — uses the router (Groq → OpenAI →
+ *     Grok → Mistral) with automatic fallback. Falls back to the legacy
+ *     callGroq() path when the router is not configured.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Calls the AI assistant using the configured provider(s). This prefers the
+ * multi-provider router (AI_PROVIDER=router) so OpenAI and other providers
+ * are used as fallback when Groq is rate-limited or unavailable.
+ */
+export async function callAssistant(messages, { fetchImpl } = {}) {
+  if (aiConfigured()) {
+    try {
+      return await callModel(messages, { task: 'assistant-chat', fetchImpl });
+    } catch (err) {
+      // If the router is configured but all providers fail, surface a clear
+      // error rather than silently falling through to the Groq-only path.
+      if (err.message && !err.message.includes('No AI model is configured')) {
+        logger.warn(`[assistant] router failed, trying Groq fallback: ${err.message}`);
+        return callGroq(messages, { fetchImpl });
+      }
+      throw err;
+    }
+  }
+  // No multi-provider router — use Groq directly.
+  return callGroq(messages, { fetchImpl });
 }
 
 /* ------------------------------------------------------------------ *

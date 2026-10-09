@@ -345,6 +345,9 @@ export const careerEvidenceAnswerSchema = z.object({
 export const careerOptimizeSchema = z.object({
   ...resumeContext,
   scope: z.enum(['all', 'summary', 'experience', 'skills']).optional(),
+  // Upload flow: apply the proposals that passed the integrity checks to a
+  // copy of the resume and return the whole optimised document.
+  autoApply: z.boolean().optional(),
 });
 
 export const careerApplyOptimizationSchema = z.object({

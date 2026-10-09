@@ -17,6 +17,7 @@ import {
   applyDecisions,
   buildComparison,
   runQualityControl,
+  validateIntegrity,
   generateEvidenceQuestions,
   buildAchievementBullet,
   toConfirmedFacts,
@@ -25,6 +26,7 @@ import {
   suggestTemplate,
 } from '../services/careerIntelligence/index.js';
 import { generateLinkedIn, generateCoverLetter, generateInterviewPrep } from '../services/careerIntelligence/careerTools.js';
+import { buildOptimizedResume, summarizeAnalysis, keywordReport } from '../services/careerIntelligence/optimizeWorkflow.js';
 
 /* ------------------------------------------------------------------ *
  * MagicalAPI Resume Checker
@@ -538,34 +540,100 @@ export const submitEvidenceAnswer = asyncHandler(async (req, res) => {
  * Optimisation (spec §15, §28, §29, §30)
  * ------------------------------------------------------------------ */
 
-/** POST /api/career/optimize — returns proposals for review. */
+/**
+ * POST /api/career/optimize
+ *
+ * Default: returns proposals for review; nothing is changed.
+ * With `autoApply: true` (the Resume Builder upload flow): proposals that
+ * passed the integrity checks are applied to a COPY of the resume and the
+ * complete optimised resume is returned together with before/after scores
+ * and a keyword report. The original is never modified, and the optimised
+ * copy is discarded in favour of the original if the integrity validator
+ * finds a serious problem in it.
+ */
 export const optimize = asyncHandler(async (req, res) => {
   const { resume, doc } = await resolveResume(req);
   const override = await configOverride();
-
-  const analysis = analyzeCandidate(resume, {
+  const confirmedFacts = doc?.confirmedFacts || [];
+  const analysisOpts = {
     jobDescription: req.body?.jobDescription,
     jobHints: req.body?.jobHints || {},
-    confirmedFacts: doc?.confirmedFacts || [],
+    confirmedFacts,
     configOverride: override,
-  });
+  };
+
+  const analysis = analyzeCandidate(resume, analysisOpts);
 
   const result = await proposeRewrites(resume, {
     jobIntel: analysis.jobIntel,
     keywordResult: analysis.keywords,
     profile: analysis.profile,
-    confirmedFacts: doc?.confirmedFacts || [],
+    confirmedFacts,
     scope: req.body?.scope || 'all',
   });
 
+  if (!req.body?.autoApply) {
+    return sendSuccess(res, {
+      message: 'Optimisation proposals ready',
+      data: {
+        ...result,
+        /* Nothing has been changed yet. The candidate accepts, edits or
+           rejects each proposal (spec §28). */
+        applied: false,
+        reviewNote: 'Every change is a proposal until you accept it. Each one shows why it was suggested.',
+      },
+    });
+  }
+
+  const built = buildOptimizedResume(resume, result.proposals, { keywordResult: analysis.keywords });
+  const integrity = validateIntegrity(built.resume, resume, { confirmedFacts });
+
+  let optimized = built.resume;
+  let changelog = [...built.changelog, ...built.extras];
+  let pending = built.pending;
+  const warnings = [...(result.warnings || [])];
+
+  if (integrity.blocked) {
+    /* A serious fact change slipped through: ship nothing automatically. */
+    optimized = resume;
+    changelog = [];
+    pending = result.proposals;
+    warnings.push('The rewritten version failed our fact check, so your original resume was kept. Review the suggestions one by one instead.');
+  }
+
+  const after = analyzeCandidate(optimized, analysisOpts);
+  const comparison = buildComparison(resume, optimized, changelog);
+
+  // The raw upload text is evidence for validation only; do not echo it back.
+  const lean = JSON.parse(JSON.stringify(optimized));
+  if (lean._source) lean._source = { ...lean._source, rawText: '' };
+  delete lean._confidence;
+
   sendSuccess(res, {
-    message: 'Optimisation proposals ready',
+    message: 'Optimised resume ready',
     data: {
-      ...result,
-      /* Nothing has been changed yet. The candidate accepts, edits or
-         rejects each proposal (spec §28). */
-      applied: false,
-      reviewNote: 'Every change is a proposal until you accept it. Each one shows why it was suggested.',
+      engine: result.engine,
+      engineNote: result.engineNote,
+      failureReason: result.failureReason,
+      warnings,
+      rejections: (result.rejections || []).slice(0, 40),
+      considered: result.summary?.bulletsConsidered ?? null,
+      applied: true,
+      mode: analysis.jobIntel ? 'job-matched' : 'general',
+      optimizedResume: lean,
+      changelog,
+      comparison,
+      pendingProposals: pending,
+      scores: { before: summarizeAnalysis(analysis), after: summarizeAnalysis(after) },
+      keywords: keywordReport(after),
+      remaining: {
+        issues: after.health?.whatNeedsImprovement || [],
+        recommendations: (after.recommendations || []).slice(0, 4).map((r) => ({ id: r.id, title: r.title, body: r.body })),
+        confirmationQuestions: (after.questions || []).slice(0, 6),
+      },
+      integrity: { passed: integrity.passed, blocked: integrity.blocked },
+      disclaimer:
+        'This is an estimate. Different employers configure their applicant tracking systems differently, so no tool can guarantee a score.',
     },
   });
 });

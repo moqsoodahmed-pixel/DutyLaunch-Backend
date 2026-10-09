@@ -14,30 +14,32 @@ const optionalDefaults = {
   MAX_UPLOAD_MB: '5',
   RATE_LIMIT_WINDOW_MIN: '15',
   RATE_LIMIT_MAX: '300',
-  // AI provider for the career tools: 'router', 'openai' or 'groq'.
-  //   router — free multi-provider mode: each task goes to Groq, Gemini or
-  //            Mistral (see TASK_ROUTES in services/careerIntelligence/
-  //            aiClient.js), with automatic fallback between them.
+  // AI provider for the career tools: 'router', 'openai', 'groq', 'grok'
+  // or 'mistral'.
+  //   router — multi-provider mode: each task goes to the best available
+  //            provider (OpenAI first for resume writing, then Groq, Grok,
+  //            Mistral), with automatic fallback. Recommended.
+  //   openai — OpenAI only (requires OPENAI_API_KEY)
+  //   groq   — Groq only (AI_PROVIDER=groq forces single-provider Groq)
+  //   grok   — xAI Grok only (requires GROK_API_KEY)
+  //   mistral — Mistral only (requires MISTRAL_API_KEY)
   // When unset: OpenAI if OPENAI_API_KEY is set, otherwise router if any of
-  // GROQ_API_KEY / GEMINI_API_KEY / MISTRAL_API_KEY is set.
+  // GROQ_API_KEY / MISTRAL_API_KEY / GROK_API_KEY is set.
   AI_PROVIDER: '',
-  // OpenAI Responses API. The model id is verified against the API project
-  // on first use; an unavailable id fails loudly and is never substituted.
-  OPENAI_MODEL: 'gpt-5.6-luna',
+  // OpenAI (ChatGPT). Used by the router (Chat Completions) and by
+  // AI_PROVIDER=openai (Responses API).
+  OPENAI_MODEL: 'gpt-4.1-mini',
   OPENAI_TIMEOUT_MS: '60000',
-  GROQ_MODEL: 'openai/gpt-oss-120b',
-  // Comma-separated backups tried, in order, only if GROQ_MODEL itself comes
-  // back as "model does not exist" (Groq's lineup changes over time — these
-  // were confirmed available via GET /v1/models on this project's key).
-  // Skips whisper-*/orpheus-* (speech models) and *-guard-* (moderation
-  // classifiers, not general chat models).
-  GROQ_MODEL_FALLBACKS: 'openai/gpt-oss-20b,qwen/qwen3.8-27b',
+  // Groq — real Groq models (not OpenAI-proxy models).
+  // llama-3.3-70b-versatile is the recommended high-quality free model.
+  GROQ_MODEL: 'llama-3.3-70b-versatile',
+  // Fallbacks tried in order only when the primary model returns "model not found".
+  GROQ_MODEL_FALLBACKS: 'llama-3.1-70b-versatile,llama3-70b-8192,mixtral-8x7b-32768',
   GROQ_API_URL: 'https://api.groq.com/openai/v1/chat/completions',
-  // Router mode only. Free key from https://aistudio.google.com/api-keys.
-  // The "-latest" aliases always point at Google's current Flash models.
-  GEMINI_MODEL: 'gemini-flash-latest',
-  GEMINI_MODEL_FALLBACKS: 'gemini-flash-lite-latest',
-  // Router mode only. Free "Experiment" key from https://console.mistral.ai.
+  // xAI Grok — OpenAI-compatible endpoint.
+  GROK_MODEL: 'grok-3-mini',
+  GROK_MODEL_FALLBACKS: 'grok-2-1212',
+  // Mistral — free "Experiment" key from https://console.mistral.ai.
   MISTRAL_MODEL: 'mistral-small-latest',
   // Per-request timeout for router calls (ms). Interview Q&A is a long answer.
   AI_TIMEOUT_MS: '90000',
@@ -108,8 +110,8 @@ export function loadEnv() {
       .map((m) => m.trim())
       .filter(Boolean),
     groqApiUrl: process.env.GROQ_API_URL,
-    geminiApiKey: process.env.GEMINI_API_KEY || '',
-    geminiModel: process.env.GEMINI_MODEL,
+    grokApiKey: process.env.GROK_API_KEY || '',
+    grokModel: process.env.GROK_MODEL,
     mistralApiKey: process.env.MISTRAL_API_KEY || '',
     mistralModel: process.env.MISTRAL_MODEL,
     razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',

@@ -303,7 +303,9 @@ function extractContact(headLines, fullText) {
   let headline = '';
   if (nameIndex >= 0) {
     const next = (headLines.slice(nameIndex + 1).find((l) => l.trim()) || '').trim();
-    if (next && next.length <= 70 && !EMAIL_RE.test(next) && !URL_RE.test(next) && !/\d{5,}/.test(next) && !/[|•]/.test(next) && next !== location && !headingKey(next)) {
+    // A tagline such as "Senior Legal Ops Manager | AI LegalTech | SaaS" is a
+    // headline too; contact lines are excluded by the email/URL/digit checks.
+    if (next && next.length <= 120 && !EMAIL_RE.test(next) && !URL_RE.test(next) && !/\d{5,}/.test(next) && !/\d\s*[|•]\s*\d/.test(next) && !/,.*(?:india|usa|uk|uae)\b/i.test(next) && next !== location && !headingKey(next)) {
       headline = next;
     }
   }
@@ -389,11 +391,19 @@ function isBullet(line) {
  * is starting, not the one that just ended. Without this the title and
  * company end up one role out of step with the dates and bullets.
  */
+/* Words that open a duty line, not a job title. Bullets typed without a
+   bullet symbol (very common in Word files) look like short headers
+   otherwise and get carried into the next role. */
+const IRREGULAR_VERBS = /^(?:led|built|drove|ran|oversaw|wrote|grew|won|cut|set|took|made|gave|taught|began|sold|held|kept|spent|brought|chose|drew|managed|developed|designed|implemented|negotiated|optimi[sz]ed|conducted|automated|collaborated|partnered|supported|contribute|work|conduct|evaluate|evaluated)\b/i;
+
 function looksLikeRoleHeader(line) {
   const t = line.trim();
   if (!t || isBullet(t) || t.length > 120) return false;
-  // A header is short and has no sentence-ending punctuation mid-line.
-  return !/[.;]\s/.test(t);
+  // A header is short and has no sentence-ending punctuation.
+  if (/[.;!?]\s/.test(t) || /[.;!?]$/.test(t)) return false;
+  if (t.split(/\s+/).length > 14) return false;
+  if (IRREGULAR_VERBS.test(t) || /^[A-Z][a-z]+(?:ed|ing)\s/.test(t)) return false;
+  return true;
 }
 
 function splitRoleBlocks(lines) {
@@ -479,6 +489,31 @@ function readCompanyAndTitle(headerLines) {
 
   const typeMatch = cleaned.match(EMPLOYMENT_TYPES);
   if (typeMatch) employmentType = typeMatch[0];
+
+  /* "Title – Specialisation | Company, City, Country" is the most common
+     one-line layout. Split on the pipe first so a subtitle such as
+     "– Fashion" stays with the title instead of being read as the company. */
+  const pipeParts = cleaned.split('|').map((p) => p.trim()).filter(Boolean);
+  if (pipeParts.length === 2) {
+    const [left, right] = pipeParts;
+    const leftIsTitle = TITLE_HINT.test(left);
+    const rightIsTitle = TITLE_HINT.test(right);
+    if (leftIsTitle !== rightIsTitle) {
+      const titlePart = leftIsTitle ? left : right;
+      const orgPart = leftIsTitle ? right : left;
+      const [orgName, ...place] = orgPart.split(/\s*[,·•]\s*/).map((p) => p.trim()).filter(Boolean);
+      if (orgName && orgName.length < 90 && titlePart.length < 120) {
+        const clean = (v) => String(v || '').replace(/\(\s*(?:full[- ]?time|part[- ]?time|contract|freelance|internship|intern|consultant|temporary|permanent|volunteer)\s*\)/gi, '').replace(/\s{2,}/g, ' ').trim();
+        return {
+          title: clean(titlePart),
+          company: clean(orgName),
+          employmentType,
+          location: place.join(', '),
+          leftovers: [],
+        };
+      }
+    }
+  }
 
   for (const part of parts) {
     if (!title && TITLE_HINT.test(part)) {
@@ -574,11 +609,11 @@ function parseExperience(lines) {
         headerLines.push(l);
       }
 
-      const { title, company, employmentType, leftovers } = readCompanyAndTitle(headerLines);
+      const { title, company, employmentType, leftovers, location } = readCompanyAndTitle(headerLines);
       role.title = title;
       role.company = company;
       role.employmentType = employmentType;
-      role.location = readLocation(leftovers);
+      role.location = location || readLocation(leftovers);
 
       // If the block has no bullet characters at all, treat non-header
       // sentence lines as duties so prose CVs are not dropped.
@@ -741,11 +776,17 @@ function parseEducation(lines) {
  * ------------------------------------------------------------------ */
 
 /** Every taxonomy term whose surface form appears in the text. */
+const PROSE_AMBIGUOUS = new Set(['go', 'r', 'c']);
+
 export function detectSkillTerms(text) {
   const source = String(text || '');
   const found = new Map(); // canonical -> the wording the candidate used
 
   ALL_CANONICAL_TERMS.forEach((term) => {
+    /* "go", "r" and "c" are everyday words and letters ("go-live",
+       "go-to-market", "Plan R"): never infer them from prose. A candidate who
+       lists them in a skills section still gets them (parseSkills step 1). */
+    if (PROSE_AMBIGUOUS.has(term.toLowerCase())) return;
     for (const form of surfaceForms(term)) {
       // Word-boundary match so "java" never matches inside "javascript".
       const escaped = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -765,39 +806,81 @@ export function detectSkillTerms(text) {
   return Array.from(found.values());
 }
 
+/** Splits on commas / bullets / semicolons, but never inside brackets. */
+function splitSkillList(text) {
+  const out = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of String(text)) {
+    if (ch === '(' || ch === '[') depth += 1;
+    if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1);
+    if (depth === 0 && /[,;|•·]/.test(ch)) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+/** "Technology: aqd.law, SpotDraft" -> bucket for the label. */
+function bucketForLabel(label) {
+  const l = String(label || '').toLowerCase();
+  if (/(tech|tool|software|platform|system|stack)/.test(l)) return 'tools';
+  if (/(compliance|legal|industry|domain|regulat|risk)/.test(l)) return 'industry';
+  if (/(soft|interpersonal|communication)/.test(l)) return 'soft';
+  return 'functional';
+}
+
 function parseSkills(skillLines, fullText) {
   const buckets = { technical: [], functional: [], soft: [], tools: [], industry: [] };
   const seen = new Set();
 
-  const add = (raw) => {
+  const add = (raw, forcedBucket = null) => {
     const term = String(raw || '').trim().replace(/[.;]+$/, '');
-    if (!term || term.length > 60) return;
+    if (!term || term.length > 80) return;
     const key = term.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    buckets[skillCategoryOf(term)].push(term);
+    buckets[forcedBucket || skillCategoryOf(term)].push(term);
   };
 
-  // 1. The candidate's own Skills section, preserving their wording.
+  // 1. The candidate's own Skills section, preserving their wording. A
+  //    "Category: item, item" line keeps its items; the label is not a skill.
   (skillLines || []).forEach((line) => {
-    const cleaned = stripBullet(line).replace(/^(technical|soft|core|key|other)\s+skills?\s*[:\-]/i, '');
+    let cleaned = stripBullet(line).replace(/^(technical|soft|core|key|other)\s+skills?\s*[:\-]/i, '');
     if (!cleaned.trim()) return;
-    cleaned
-      .split(/[,;|•·/]|\s{3,}/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 1 && s.length < 60 && !/^\d+$/.test(s))
-      .forEach(add);
+    let forced = null;
+    const labelled = cleaned.match(/^([A-Za-z][A-Za-z &/]{2,40}):\s+(.+)$/);
+    if (labelled) {
+      forced = bucketForLabel(labelled[1]);
+      cleaned = labelled[2];
+    }
+    splitSkillList(cleaned)
+      .map((x) => x.trim())
+      .filter((x) => x.length > 1 && x.length < 80 && !/^\d+$/.test(x))
+      .forEach((x) => add(x, forced));
   });
 
   // 2. Taxonomy terms found anywhere else in the CV, so a skill proved in
-  //    an experience bullet still counts (spec §6).
-  //    Section headings are left out: "Core Competencies & Leadership
-  //    Capabilities" is a heading, not proof of a leadership skill.
+  //    an experience bullet still counts (spec §6). Section headings are
+  //    left out, and a term already covered by a longer listed skill
+  //    ("Excel" inside "Advanced Excel") is not added a second time.
+  const listed = () => Array.from(seen);
+  const covered = (term) => {
+    const t = term.toLowerCase();
+    const word = new RegExp(`(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`);
+    return listed().some((existing) => existing !== t && word.test(existing));
+  };
   const withoutHeadings = String(fullText || '')
     .split(/\r?\n/)
     .filter((l) => !(looksLikeHeading(l) && headingKey(l)))
     .join('\n');
-  detectSkillTerms(withoutHeadings).forEach(add);
+  detectSkillTerms(withoutHeadings).forEach((term) => {
+    if (!covered(term)) add(term);
+  });
 
   return buckets;
 }
@@ -815,11 +898,14 @@ function parseList(lines, { max = 30, minLength = 3 } = {}) {
 }
 
 function parseCertifications(lines) {
-  return parseList(lines, { max: 30 }).map((line) => {
+  /* A single line like "Cert A • Cert B • Cert C" is a list of certifications,
+     not one very long certification. */
+  const expanded = (lines || []).flatMap((l) => String(l || '').split(/\s+[•·]\s+|\s+\|\s+(?=[A-Z])/));
+  return parseList(expanded, { max: 30 }).map((line) => {
     const dateMatch = line.match(new RegExp(DATE_TOKEN, 'i'));
     const issuerMatch = line.match(/(?:by|from|—|–|-|\|)\s*([A-Z][\w&.\s]{2,50})$/);
     return {
-      name: line.replace(DATE_RANGE_RE, '').replace(/\s{2,}/g, ' ').trim().slice(0, 160),
+      name: line.replace(DATE_RANGE_RE, '').replace(/\s{2,}/g, ' ').trim().slice(0, 200),
       issuer: issuerMatch ? issuerMatch[1].trim() : '',
       issueDate: dateMatch ? normaliseDate(dateMatch[0]) : '',
       expiryDate: '',

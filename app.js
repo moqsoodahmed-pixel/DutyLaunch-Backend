@@ -37,7 +37,11 @@ app.use(
 
 app.use(
   express.json({
-    limit: '200kb',
+    // Career Intelligence routes accept an inline resume JSON in the body
+    // (POST /api/career/optimize, /analyze, /export, etc.). A stripped resume
+    // (rawText cleared) is typically 20–80 KB; keeping 500 KB gives plenty of
+    // headroom without opening the door to arbitrarily large payloads.
+    limit: '500kb',
     // Razorpay webhooks are signed over the exact bytes received, so keep a
     // copy of the raw body for that one route.
     verify: (req, res, buf) => {
@@ -45,7 +49,7 @@ app.use(
     },
   })
 );
-app.use(express.urlencoded({ extended: true, limit: '200kb' }));
+app.use(express.urlencoded({ extended: true, limit: '500kb' }));
 app.use(cookieParser());
 app.use(compression());
 app.use(mongoSanitize);

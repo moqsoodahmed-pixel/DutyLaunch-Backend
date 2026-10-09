@@ -8,11 +8,11 @@
  * stay deterministic and never call a model.
  *
  * Providers (AI_PROVIDER):
- *   router — free multi-provider mode. Each task goes to the provider that
- *            suits it best (Groq, Gemini or Mistral), with automatic
- *            fallback to the next provider when one is rate-limited or
- *            down. See TASK_ROUTES below. Default when no OpenAI key is set
- *            and at least one free key (GROQ/GEMINI/MISTRAL) is present.
+ *   router — multi-provider mode. Each task goes to the provider that
+ *            suits it best (OpenAI/ChatGPT first for resume writing, then
+ *            Groq / Mistral / Grok as fallbacks), with automatic fallback
+ *            to the next provider when one is rate-limited or down. See
+ *            TASK_ROUTES below. Gemini is no longer used.
  *   openai — OpenAI Responses API (POST /v1/responses). Default when
  *            OPENAI_API_KEY is set.
  *   groq   — the original single-provider Groq integration
@@ -29,7 +29,12 @@ const OPENAI_BASE = 'https://api.openai.com/v1';
 
 /* Settings are read on every call so tests and hot config changes work. */
 function anyFreeKey() {
-  return Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.MISTRAL_API_KEY);
+  return Boolean(
+    process.env.OPENAI_API_KEY ||
+    process.env.GROQ_API_KEY ||
+    process.env.MISTRAL_API_KEY ||
+    process.env.GROK_API_KEY,
+  );
 }
 
 function settings() {
@@ -40,7 +45,7 @@ function settings() {
       provider ||
       (process.env.OPENAI_API_KEY ? 'openai' : anyFreeKey() ? 'router' : ''),
     openaiKey: process.env.OPENAI_API_KEY || '',
-    openaiModel: (process.env.OPENAI_MODEL || 'gpt-5.6-luna').trim(),
+    openaiModel: (process.env.OPENAI_MODEL || 'gpt-4.1-mini').trim(),
     timeoutMs: Number(process.env.OPENAI_TIMEOUT_MS) || 60000,
   };
 }
@@ -185,7 +190,7 @@ async function callGroqProvider(messages, options) {
 /* ------------------------------------------------------------------ *
  * Router: free multi-provider mode (AI_PROVIDER=router)
  *
- * Groq, Gemini and Mistral all accept OpenAI-style chat-completion
+ * OpenAI, Groq, Mistral and Grok all accept OpenAI-style chat-completion
  * requests, so one function calls all three. Each task has a preferred
  * order of providers; providers without a key are skipped, and a provider
  * that is rate-limited, down or returns a cut-off answer hands the task to
@@ -204,21 +209,38 @@ export const ROUTER_PROVIDERS = {
     label: 'Groq',
     url: () => process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1/chat/completions',
     key: () => process.env.GROQ_API_KEY || '',
-    models: () => listOf(process.env.GROQ_MODEL || 'openai/gpt-oss-120b', process.env.GROQ_MODEL_FALLBACKS),
+    // Default to real Groq models (llama-3.3-70b-versatile is the top free model).
+    // The env var GROQ_MODEL can override this; GROQ_MODEL_FALLBACKS are tried
+    // in order only when the primary model returns "model does not exist".
+    models: () => listOf(
+      process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+      process.env.GROQ_MODEL_FALLBACKS || 'llama-3.1-70b-versatile,llama3-70b-8192,mixtral-8x7b-32768',
+    ),
     // Groq's free tier allows ~8,000 tokens per minute per model, so a
     // single request must stay well under that.
     maxTokensCap: () => Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 6000,
+    // reasoning_effort is only supported by the gpt-oss series; real Groq
+    // models (llama, mixtral, qwen) do not support it and will reject 400.
     reasoningEffort: (model) => (/gpt-oss/i.test(model) ? 'low' : null),
   },
-  gemini: {
-    label: 'Gemini',
-    url: () => 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-    key: () => process.env.GEMINI_API_KEY || '',
-    models: () => listOf(process.env.GEMINI_MODEL || 'gemini-flash-latest', process.env.GEMINI_MODEL_FALLBACKS || 'gemini-flash-lite-latest'),
-    maxTokensCap: () => Number(process.env.GEMINI_MAX_OUTPUT_TOKENS) || 16000,
-    // Gemini Flash "thinks" before answering and that counts against
-    // max_tokens; keeping effort low leaves room for the actual answer.
-    reasoningEffort: () => 'low',
+  // OpenAI (ChatGPT models) via the Chat Completions endpoint. First choice for
+  // resume rewriting, ATS keyword alignment and summaries because it follows
+  // the strict "no invented facts" rules best. OPENAI_MODEL picks the model
+  // (default gpt-4.1-mini); OPENAI_MODEL_FALLBACKS are tried in order only
+  // when the primary model is missing from the project.
+  openai: {
+    label: 'OpenAI',
+    url: () => `${process.env.OPENAI_BASE_URL || OPENAI_BASE}/chat/completions`,
+    key: () => process.env.OPENAI_API_KEY || '',
+    models: () => listOf(
+      process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+      process.env.OPENAI_MODEL_FALLBACKS,
+    ),
+    maxTokensCap: () => Number(process.env.OPENAI_MAX_OUTPUT_TOKENS) || 16000,
+    reasoningEffort: () => null,
+    // gpt-5 / o-series reject `max_tokens` and any non-default temperature.
+    tokenParam: () => 'max_completion_tokens',
+    temperature: (model) => (/^(o\d|gpt-5)/i.test(model) ? null : 0.3),
   },
   mistral: {
     label: 'Mistral',
@@ -228,46 +250,118 @@ export const ROUTER_PROVIDERS = {
     maxTokensCap: () => Number(process.env.MISTRAL_MAX_OUTPUT_TOKENS) || 8000,
     reasoningEffort: () => null,
   },
+  // xAI Grok — OpenAI-compatible endpoint.
+  // Activate with AI_PROVIDER=router and GROK_API_KEY set, or with
+  // AI_PROVIDER=grok for single-provider mode (uses onlyProviders).
+  grok: {
+    label: 'Grok (xAI)',
+    url: () => 'https://api.x.ai/v1/chat/completions',
+    key: () => process.env.GROK_API_KEY || '',
+    models: () => listOf(process.env.GROK_MODEL || 'grok-3-mini', process.env.GROK_MODEL_FALLBACKS || 'grok-2-1212'),
+    maxTokensCap: () => Number(process.env.GROK_MAX_OUTPUT_TOKENS) || 8000,
+    reasoningEffort: () => null,
+  },
 };
 
 /**
  * Which provider handles which task, in order of preference.
- *   Groq    — fast, follows strict rewrite rules: resume, LinkedIn, mock interview
- *   Mistral — natural, human-sounding prose: cover letters
- *   Gemini  — large outputs: top-10 interview Q&A, interview prep
+ *   OpenAI  — ChatGPT models: resume rewriting, ATS keywords, summaries,
+ *             job descriptions, LinkedIn, interview content
+ *   Groq    — fast; first choice for the live mock interview, fallback elsewhere
+ *   Mistral — natural prose; first choice for cover letters
+ *   Grok    — xAI; used as a fallback when GROK_API_KEY is configured
+ *
+ * Only providers whose key() is non-empty are included at runtime (see
+ * routeFor()). Providers without a key are silently skipped.
  */
 export const TASK_ROUTES = {
-  // Step 4: Generate professional resume
-  'resume-rewrite': ['groq', 'gemini', 'mistral'],
-  'resume-summary': ['groq', 'gemini', 'mistral'],
-  // Resume Builder wizard: example bullets, skills and summaries
-  'builder-suggestions': ['groq', 'gemini', 'mistral'],
-  // Step 4: AI-written target job description (from the LinkedIn profile)
-  'job-description': ['groq', 'gemini', 'mistral'],
-  // Step 6: Generate cover letter
-  'cover-letter-paragraph': ['mistral', 'groq', 'gemini'],
-  'cover-letter': ['mistral', 'groq', 'gemini'],
-  // Step 7: Top 10 interview Q&A
-  'interview-top10': ['gemini', 'mistral', 'groq'],
-  'interview-regenerate': ['gemini', 'groq', 'mistral'],
-  'interview-prep': ['gemini', 'mistral', 'groq'],
-  // Mock interview (Phase 2) — speed matters most
-  'mock-plan': ['groq', 'gemini', 'mistral'],
-  'mock-evaluate': ['groq', 'gemini', 'mistral'],
-  'mock-report': ['groq', 'gemini', 'mistral'],
+  // Resume writing / ATS optimisation
+  'resume-rewrite': ['openai', 'groq', 'grok', 'mistral'],
+  'resume-summary': ['openai', 'groq', 'grok', 'mistral'],
+  'builder-suggestions': ['openai', 'groq', 'grok', 'mistral'],
+  'job-description': ['openai', 'groq', 'grok', 'mistral'],
+  // Cover letters (Mistral produces more natural prose; OpenAI is next best)
+  'cover-letter-paragraph': ['mistral', 'openai', 'groq', 'grok'],
+  'cover-letter': ['mistral', 'openai', 'groq', 'grok'],
+  // Interview Q&A (large structured outputs)
+  'interview-top10': ['openai', 'grok', 'mistral', 'groq'],
+  'interview-regenerate': ['openai', 'groq', 'grok', 'mistral'],
+  'interview-prep': ['openai', 'mistral', 'grok', 'groq'],
+  // Mock interview — speed matters most
+  'mock-plan': ['groq', 'openai', 'grok', 'mistral'],
+  'mock-evaluate': ['groq', 'openai', 'grok', 'mistral'],
+  'mock-report': ['groq', 'openai', 'grok', 'mistral'],
   // Career tools
-  'linkedin-optimise': ['groq', 'gemini', 'mistral'],
-  default: ['groq', 'gemini', 'mistral'],
+  'linkedin-optimise': ['openai', 'groq', 'grok', 'mistral'],
+  // General AI assistant chat
+  'assistant-chat': ['groq', 'openai', 'grok', 'mistral'],
+  default: ['openai', 'groq', 'grok', 'mistral'],
 };
+
+/* ------------------------------------------------------------------ *
+ * Provider cooldown. A provider that says "no credit left" or "bad key"
+ * will keep saying so, so it is skipped for a while instead of costing every
+ * request a failed call (and, with several parallel requests, a lot of waiting).
+ * Rate limits are different — they clear within a minute and are retried.
+ * ------------------------------------------------------------------ */
+
+const QUOTA_CODES = new Set([
+  'insufficient_quota',
+  'credit_balance_exhausted',
+  'billing_not_active',
+  'billing_hard_limit_reached',
+  'account_deactivated',
+]);
+
+const cooldowns = new Map(); // provider -> { until, reason }
+
+const cooldownMs = () => Number(process.env.PROVIDER_COOLDOWN_MS) || 5 * 60 * 1000;
+
+function isCoolingDown(name) {
+  const c = cooldowns.get(name);
+  if (!c) return false;
+  if (Date.now() >= c.until) {
+    cooldowns.delete(name);
+    return false;
+  }
+  return true;
+}
+
+function disableProvider(name, reason) {
+  if (isCoolingDown(name)) return;
+  cooldowns.set(name, { until: Date.now() + cooldownMs(), reason });
+  let hint = '';
+  if (name === 'openai' && /credit/.test(reason)) {
+    hint = ' Add credit at platform.openai.com/settings/organization/billing (API credit is separate from a ChatGPT subscription).';
+  } else if (/key was rejected/.test(reason)) {
+    hint = ` Check the ${name.toUpperCase()}_API_KEY value in .env (create a new key if needed).`;
+  }
+  logger.error(`[ai] ${name} disabled for ${Math.round(cooldownMs() / 60000)} min: ${reason}.${hint}`);
+}
+
+/** True when a provider has a key and is not in cooldown. */
+export function isProviderUsable(name) {
+  return Boolean(ROUTER_PROVIDERS[name]?.key()) && !isCoolingDown(name);
+}
+
+/** Test seam. */
+export function __resetProviderCooldowns() {
+  cooldowns.clear();
+}
 
 function routeFor(task, only = null) {
   const chain = only || TASK_ROUTES[task] || TASK_ROUTES.default;
-  return chain.filter((name) => ROUTER_PROVIDERS[name]?.key());
+  const configured = chain.filter((name) => ROUTER_PROVIDERS[name]?.key());
+  const usable = configured.filter((name) => !isCoolingDown(name));
+  // If everything is cooling down (say, credit was just added), try anyway
+  // rather than refusing to work for the rest of the cooldown.
+  return usable.length ? usable : configured;
 }
 
 class ProviderError extends Error {
-  constructor(message, { status = null, modelMissing = false, retryAfterMs = null } = {}) {
+  constructor(message, { status = null, modelMissing = false, retryAfterMs = null, quota = false } = {}) {
     super(message);
+    this.quota = quota;
     this.status = status;
     this.modelMissing = modelMissing;
     this.retryAfterMs = retryAfterMs;
@@ -297,7 +391,7 @@ function retryAfterFrom(res, body) {
   const h = (k) => (res.headers?.get ? res.headers.get(k) : null);
   const fromHeader = parseWait(h('retry-after')) ?? parseWait(h('x-ratelimit-reset-tokens')) ?? parseWait(h('x-ratelimit-reset-requests'));
   if (fromHeader != null) return fromHeader;
-  // Gemini puts it in the error body: details[].retryDelay = "27s"
+  // Some providers put it in the error body: details[].retryDelay = "27s"
   const details = (Array.isArray(body) ? body[0]?.error : body?.error)?.details || [];
   for (const d of details) {
     const w = parseWait(d?.retryDelay);
@@ -313,7 +407,10 @@ const MODEL_MISSING = /model.*(not\s*found|does not exist|not exist|unknown|inva
 async function postChat(name, model, messages, options, fetchImpl, { withExtras }) {
   const p = ROUTER_PROVIDERS[name];
   const maxTokens = Math.min(options.maxOutputTokens || 4000, p.maxTokensCap());
-  const body = { model, messages: messages.map((m) => ({ role: m.role, content: String(m.content) })), max_tokens: maxTokens, temperature: 0.4 };
+  const body = { model, messages: messages.map((m) => ({ role: m.role, content: String(m.content) })) };
+  body[p.tokenParam ? p.tokenParam(model) : 'max_tokens'] = maxTokens;
+  const temperature = p.temperature ? p.temperature(model) : 0.4;
+  if (temperature != null) body.temperature = temperature;
   if (withExtras) {
     if (options.json) body.response_format = { type: 'json_object' };
     const effort = p.reasoningEffort(model);
@@ -342,6 +439,9 @@ async function postChat(name, model, messages, options, fetchImpl, { withExtras 
     throw new ProviderError(`${p.label} ${model}: HTTP ${res.status}${code ? ` ${code}` : ''}`, {
       status: res.status,
       retryAfterMs: RATE_LIMITED.has(res.status) ? retryAfterFrom(res, json) : null,
+      // OpenAI answers 429 "insufficient_quota" when billing/credit is exhausted.
+      // Waiting will not help, so it must not trigger the rate-limit retry.
+      quota: QUOTA_CODES.has(code) || res.status === 401 || res.status === 403,
       modelMissing: res.status === 404 || ((res.status === 400 || res.status === 422) && MODEL_MISSING.test(detail)),
     });
   }
@@ -399,12 +499,13 @@ async function callRouted(messages, options, fetchImpl) {
       recordUsage(task, {}, false, name);
       failures.push(err.message);
       errors.push(err);
+      if (err.quota) disableProvider(name, err.status === 401 || err.status === 403 ? 'the API key was rejected' : 'no API credit left (billing)');
       logger.warn(`[ai] ${task} failed on ${name}: ${err.message}`);
     }
   }
   // Every provider was busy because of per-minute free limits: wait as long
   // as they asked (at most 25 s) and try the whole chain once more.
-  const limited = errors.filter((e) => RATE_LIMITED.has(e.status));
+  const limited = errors.filter((e) => RATE_LIMITED.has(e.status) && !e.quota);
   if (limited.length && !options._retried) {
     const asked = Math.max(...limited.map((e) => e.retryAfterMs ?? 0));
     const wait = Math.min(MAX_WAIT_MS, Math.max(asked || 0, options._retryBaseMs ?? 8000));
@@ -428,7 +529,14 @@ export function aiProvider() {
   const cfg = settings();
   if (cfg.provider === 'openai' && cfg.openaiKey) return 'openai';
   if (cfg.provider === 'groq' && process.env.GROQ_API_KEY) return 'groq';
+  if (cfg.provider === 'grok' && process.env.GROK_API_KEY) return 'grok';
+  if (cfg.provider === 'mistral' && process.env.MISTRAL_API_KEY) return 'mistral';
   if (cfg.provider === 'router' && anyFreeKey()) return 'router';
+  // Auto-select: prefer router when multiple keys are set for better reliability.
+  if (!cfg.provider) {
+    if (cfg.openaiKey) return 'openai';
+    if (anyFreeKey()) return 'router';
+  }
   return '';
 }
 
@@ -441,14 +549,21 @@ export function aiConfigured() {
 export function aiStatus() {
   const cfg = settings();
   const provider = aiProvider();
+  const singleProviderModel = {
+    openai: cfg.openaiModel,
+    groq: process.env.GROQ_MODEL || null,
+    grok: process.env.GROK_MODEL || null,
+    mistral: process.env.MISTRAL_MODEL || null,
+  };
   const status = {
     provider: provider || null,
     requestedProvider: cfg.provider || null,
-    model: provider === 'openai' ? cfg.openaiModel : provider === 'groq' ? process.env.GROQ_MODEL || null : null,
+    model: provider && provider !== 'router' ? (singleProviderModel[provider] || null) : null,
     modelVerified: modelCheck ? modelCheck.ok && !modelCheck.unverified : null,
     modelProblem: modelCheck && !modelCheck.ok ? modelCheck.message : null,
   };
   if (provider === 'router') {
+    status.unavailable = Object.fromEntries([...cooldowns].filter(([n]) => isCoolingDown(n)).map(([n, c]) => [n, c.reason]));
     status.providers = Object.fromEntries(
       Object.entries(ROUTER_PROVIDERS).map(([name, p]) => [name, { configured: Boolean(p.key()), model: p.models()[0] || null }])
     );
@@ -469,11 +584,11 @@ export async function callModel(messages, options = {}) {
   if (!provider) throw new Error('No AI model is configured in this environment.');
   if (provider === 'openai') return callOpenAi(messages, options, settings(), options.fetchImpl || fetch);
   if (provider === 'router') return callRouted(messages, options, options.fetchImpl || fetch);
-  // AI_PROVIDER=groq: Groq only, but through the same caller as the router so
-  // each task gets its full token budget and JSON mode. (The older chat
-  // helper capped every reply at 700 tokens, which cut off job descriptions,
-  // cover letters and interview answers.)
+  // Single-provider modes: route through the same router so each task gets
+  // its full token budget and JSON mode.
   if (provider === 'groq') return callRouted(messages, { ...options, onlyProviders: ['groq'] }, options.fetchImpl || fetch);
+  if (provider === 'grok') return callRouted(messages, { ...options, onlyProviders: ['grok'] }, options.fetchImpl || fetch);
+  if (provider === 'mistral') return callRouted(messages, { ...options, onlyProviders: ['mistral'] }, options.fetchImpl || fetch);
   return callGroqProvider(messages, options);
 }
 

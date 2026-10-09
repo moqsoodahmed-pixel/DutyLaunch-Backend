@@ -1,0 +1,13 @@
+Legal Operations Manager – CLM
+
+Requirements:
+- 5+ years in legal operations or contract management
+- Experience with Contract Lifecycle Management (CLM) platforms
+- Legal workflow automation and AI-assisted contract review
+- Salesforce or HubSpot CRM, and Power BI reporting
+- Experience managing large cross-functional teams
+- Python or data engineering experience
+
+Preferred:
+- AML/KYC and regulatory compliance experience
+- Six Sigma certification
