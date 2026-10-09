@@ -410,6 +410,11 @@ export const downloadResumeDocument = asyncHandler(async (req, res) => {
   });
 });
 
+/** User-facing message when the AI fails: say so plainly when it is only
+    the free per-minute limit (it clears by itself within a minute). */
+const BUSY_MSG = 'The free AI limit for this minute has been reached. Wait about a minute and try again.';
+const aiFailMsg = (err, fallback) => (err?.rateLimited ? BUSY_MSG : fallback);
+
 /**
  * POST /api/studio/suggestions — Resume Builder wizard examples:
  * { kind: 'bullets' | 'skills' | 'summary', jobTitle, experienceLevel?, details? }
@@ -422,7 +427,7 @@ export const builderSuggestions = asyncHandler(async (req, res) => {
     items = await generateBuilderSuggestions({ kind, jobTitle, experienceLevel, details });
   } catch (err) {
     logger.error(`[studio] builder suggestions failed: ${err.message}`);
-    throw new ApiError(503, 'AI suggestions are busy right now. Use the examples or write your own.');
+    throw new ApiError(503, aiFailMsg(err, 'AI suggestions are busy right now. Use the examples or write your own.'));
   }
   sendSuccess(res, { message: 'Suggestions', data: { kind, jobTitle, items } });
 });
@@ -440,7 +445,7 @@ export const suggestJobDescription = asyncHandler(async (req, res) => {
     result = await generateJobDescription(ctx.resume, { ...genOpts(ctx), jobTitle, company, industry, experienceLevel });
   } catch (err) {
     logger.error(`[studio] job description generation failed: ${err.message}`);
-    throw new ApiError(503, 'The AI could not write a job description right now. Try again in a moment, or paste the job posting.');
+    throw new ApiError(503, aiFailMsg(err, 'The AI could not write a job description right now. Try again in a moment, or paste the job posting.'));
   }
   sendSuccess(res, { message: 'Job description written', data: { ...result, source: 'ai' } });
 });
@@ -478,7 +483,7 @@ export const createCoverLetter = asyncHandler(async (req, res) => {
       jobDescriptionSource = 'ai';
     } catch (err) {
       logger.error(`[studio] cover letter: job description generation failed: ${err.message}`);
-      throw new ApiError(503, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.');
+      throw new ApiError(503, aiFailMsg(err, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.'));
     }
   }
   const ctx = await context(req.user._id, { versionId, jobDescription, jobTitle, company });
@@ -606,7 +611,7 @@ export const createInterviewSet = asyncHandler(async (req, res) => {
       jobDescriptionSource = 'ai';
     } catch (err) {
       logger.error(`[studio] interview set: job description generation failed: ${err.message}`);
-      throw new ApiError(503, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.');
+      throw new ApiError(503, aiFailMsg(err, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.'));
     }
   }
   const ctx = await context(req.user._id, { versionId, jobDescription, jobTitle, company });

@@ -172,3 +172,31 @@ test('AI_PROVIDER=groq never falls back to Gemini or Mistral', async () => {
   await assert.rejects(() => callModel(messages, { task: 'cover-letter', fetchImpl }));
   assert.ok(calls.every((c) => c.name === 'groq'));
 });
+
+test('when every provider is rate-limited, the router waits and retries once', async () => {
+  process.env.AI_PROVIDER = 'router';
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls <= 3) return new Response(JSON.stringify({ error: { code: 'rate_limit_exceeded' } }), { status: 429, headers: { 'retry-after': '0.05' } });
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":true}' }, finish_reason: 'stop' }], usage: {} }), { status: 200 });
+  };
+  const text = await callModel(messages, { task: 'cover-letter', fetchImpl, _retryBaseMs: 0 });
+  assert.equal(text, '{"ok":true}');
+  assert.equal(calls, 4, '3 providers busy, then one retry succeeds');
+});
+
+test('it retries only once, then reports that the free limit was reached', async () => {
+  process.env.AI_PROVIDER = 'router';
+  const fetchImpl = async () => new Response(JSON.stringify({ error: {} }), { status: 429, headers: { 'retry-after': '0' } });
+  await assert.rejects(() => callModel(messages, { task: 'cover-letter', fetchImpl, _retryBaseMs: 0 }), (err) => err.rateLimited === true);
+});
+
+test('wait times are read from provider headers', async () => {
+  const { parseWait } = await import('../services/careerIntelligence/aiClient.js');
+  assert.equal(parseWait('7'), 7000);
+  assert.equal(parseWait('7.5s'), 7500);
+  assert.equal(parseWait('1m2s'), 62000);
+  assert.equal(parseWait('250ms'), 250);
+  assert.equal(parseWait(''), null);
+});

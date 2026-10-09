@@ -266,12 +266,47 @@ function routeFor(task, only = null) {
 }
 
 class ProviderError extends Error {
-  constructor(message, { status = null, modelMissing = false } = {}) {
+  constructor(message, { status = null, modelMissing = false, retryAfterMs = null } = {}) {
     super(message);
     this.status = status;
     this.modelMissing = modelMissing;
+    this.retryAfterMs = retryAfterMs;
   }
 }
+
+/* Free plans limit requests/tokens PER MINUTE. When a provider says "too
+   many requests", it usually also says how long to wait. */
+const RATE_LIMITED = new Set([413, 429]);
+const MAX_WAIT_MS = 25000;
+
+/** "7", "7.5s", "1m2.3s", "250ms" → milliseconds (null if unreadable). */
+export function parseWait(value) {
+  const v = String(value || '').trim();
+  if (!v) return null;
+  if (/^\d+(\.\d+)?$/.test(v)) return Math.round(Number(v) * 1000);
+  let ms = 0;
+  let matched = false;
+  for (const [, n, unit] of v.matchAll(/(\d+(?:\.\d+)?)(ms|s|m|h)/g)) {
+    matched = true;
+    ms += Number(n) * { ms: 1, s: 1000, m: 60000, h: 3600000 }[unit];
+  }
+  return matched ? Math.round(ms) : null;
+}
+
+function retryAfterFrom(res, body) {
+  const h = (k) => (res.headers?.get ? res.headers.get(k) : null);
+  const fromHeader = parseWait(h('retry-after')) ?? parseWait(h('x-ratelimit-reset-tokens')) ?? parseWait(h('x-ratelimit-reset-requests'));
+  if (fromHeader != null) return fromHeader;
+  // Gemini puts it in the error body: details[].retryDelay = "27s"
+  const details = (Array.isArray(body) ? body[0]?.error : body?.error)?.details || [];
+  for (const d of details) {
+    const w = parseWait(d?.retryDelay);
+    if (w != null) return w;
+  }
+  return null;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const MODEL_MISSING = /model.*(not\s*found|does not exist|not exist|unknown|invalid|decommissioned|not supported)|no such model/i;
 
@@ -306,6 +341,7 @@ async function postChat(name, model, messages, options, fetchImpl, { withExtras 
     const detail = typeof err?.message === 'string' ? err.message.slice(0, 200) : '';
     throw new ProviderError(`${p.label} ${model}: HTTP ${res.status}${code ? ` ${code}` : ''}`, {
       status: res.status,
+      retryAfterMs: RATE_LIMITED.has(res.status) ? retryAfterFrom(res, json) : null,
       modelMissing: res.status === 404 || ((res.status === 400 || res.status === 422) && MODEL_MISSING.test(detail)),
     });
   }
@@ -349,6 +385,7 @@ async function callRouted(messages, options, fetchImpl) {
   if (!chain.length) throw new Error('No AI model is configured in this environment.');
 
   const failures = [];
+  const errors = [];
   for (const name of chain) {
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -361,10 +398,23 @@ async function callRouted(messages, options, fetchImpl) {
     } catch (err) {
       recordUsage(task, {}, false, name);
       failures.push(err.message);
+      errors.push(err);
       logger.warn(`[ai] ${task} failed on ${name}: ${err.message}`);
     }
   }
-  throw new Error(`Every AI provider failed for ${task}: ${failures.join('; ')}`);
+  // Every provider was busy because of per-minute free limits: wait as long
+  // as they asked (at most 25 s) and try the whole chain once more.
+  const limited = errors.filter((e) => RATE_LIMITED.has(e.status));
+  if (limited.length && !options._retried) {
+    const asked = Math.max(...limited.map((e) => e.retryAfterMs ?? 0));
+    const wait = Math.min(MAX_WAIT_MS, Math.max(asked || 0, options._retryBaseMs ?? 8000));
+    logger.warn(`[ai] ${task}: all providers rate-limited, retrying in ${Math.round(wait / 1000)}s`);
+    await sleep(wait);
+    return callRouted(messages, { ...options, _retried: true }, fetchImpl);
+  }
+  const err = new Error(`Every AI provider failed for ${task}: ${failures.join('; ')}`);
+  err.rateLimited = limited.length > 0 && limited.length === errors.length;
+  throw err;
 }
 
 /* ------------------------------------------------------------------ *
