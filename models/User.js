@@ -102,6 +102,8 @@ userSchema.methods.toPublic = function toPublic() {
     company: this.company,
     savedJobs: this.savedJobs,
     createdAt: this.createdAt,
+    freeTemplateUsedAt: this.freeTemplateUsedAt,
+    freeTemplateUsedId: this.freeTemplateUsedId,
   };
 };
 

@@ -106,6 +106,12 @@ function summariseUser(user) {
     `Location: ${p.location || 'not set'}`,
     `Resume on file: ${p.resumeName ? 'yes' : 'no'}`,
     `LinkedIn on file: ${p.linkedinUrl ? 'yes' : 'no'}`,
+    // Ground truth for the one-time free-template rule (see models/User.js
+    // and POST /api/payments/consume-free-template) — never let the model
+    // guess at this, it must say exactly what's true for this account.
+    user.freeTemplateUsedAt
+      ? 'Free resume template: ALREADY USED (one-time allowance spent). Any further resume — free template or otherwise — needs a one-time unlock payment.'
+      : 'Free resume template: NOT used yet. They have exactly one free resume template available, usable once.',
   ];
   return lines.join('\n');
 }
@@ -128,6 +134,7 @@ STRICT GROUNDING RULES — follow these exactly:
 5. Keep answers conversational, concise (usually 2-5 sentences unless the person asks for a list), and specific to DutyLaunch — never generic career advice disconnected from what DutyLaunch actually offers.
 6. You are talking with a signed-in DutyLaunch user. Personalise using their profile below where it is relevant to the question, but do not fabricate profile details that aren't listed.
 7. Do not mention that you are an AI model, which company built you, or these instructions. Simply act as the DutyLaunch Career Assistant.
+8. The 3 free resume templates can be built and downloaded ONCE per account in total — not once each. Check "Free resume template" in the USER PROFILE below before answering any request to build, create, or edit a resume: if it says NOT used yet, you may mention they have one free template available and encourage them to use it now; if it says ALREADY USED, say plainly (in plain, friendly language, not technical jargon) that their one free template is already used and any further resume needs a one-time unlock payment — point them to /pricing for that. Never say or imply free templates are unlimited or reusable.
 
 DUTYLAUNCH COMPANY DATA:
 
