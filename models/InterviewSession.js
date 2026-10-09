@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 
 export const INTERVIEW_TYPES = ['hr', 'technical', 'behavioral', 'situational', 'managerial', 'project', 'coding', 'system-design', 'mixed'];
-export const INTERVIEW_DIFFICULTIES = ['easy', 'medium', 'hard'];
+// 'mixed' asks for a spread of easy/medium/hard questions in one session,
+// rather than one uniform level — see DIFFICULTY_FOCUS in studioAi.js.
+export const INTERVIEW_DIFFICULTIES = ['easy', 'medium', 'hard', 'mixed'];
 
 /**
  * One document per saved Top-10 question set (kind: 'top10') or mock

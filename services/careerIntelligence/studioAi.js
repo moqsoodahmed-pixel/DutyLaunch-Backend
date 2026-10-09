@@ -265,25 +265,46 @@ const TYPE_FOCUS = {
   mixed: 'A balanced mix of background, technical, behavioural and situational questions.',
 };
 
+// Describes the requested difficulty in the prompt. Plain words for the
+// uniform levels (unchanged from before); 'mixed' gets an explicit spread
+// instruction instead of the bare word — writing "mixed mixed practice
+// interview" when interviewType is ALSO 'mixed' would be ambiguous, so this
+// is phrased as its own clause rather than a single adjective.
+const DIFFICULTY_FOCUS = {
+  easy: 'an easy',
+  medium: 'a medium-difficulty',
+  hard: 'a hard',
+  mixed: 'a practice interview with a difficulty spread — roughly a third easy, a third medium and a third hard, in no particular order — not a',
+};
+
 export async function planMockQuestions(resume, { interviewType = 'mixed', difficulty = 'medium', count = 5, ...opts }) {
   const ctx = context(resume, opts);
   try {
     const task = [
-      `Plan a ${difficulty} ${interviewType} practice interview for ${roleName(opts.jobIntel)}: ${TYPE_FOCUS[interviewType] || TYPE_FOCUS.mixed}`,
-      `Return JSON: { "questions": [ { "question": "", "category": "" } ] } with exactly ${count} questions, asked one at a time.`,
+      `Plan ${DIFFICULTY_FOCUS[difficulty] || DIFFICULTY_FOCUS.medium} ${interviewType} practice interview for ${roleName(opts.jobIntel)}: ${TYPE_FOCUS[interviewType] || TYPE_FOCUS.mixed}`,
+      `Return JSON: { "questions": [ { "question": "", "category": "", "difficulty": "easy|medium|hard" } ] } with exactly ${count} questions, asked one at a time.`,
+      difficulty === 'mixed'
+        ? `Tag each question's own "difficulty" honestly (easy, medium or hard) so the spread is real, not every question labelled the same.`
+        : `Every question's "difficulty" should be "${difficulty}".`,
       'Base questions on the candidate\'s documented experience and the job. Practice questions only — never claim they are real employer questions.',
     ].join('\n');
     const reply = await callModel(buildPrompt(ctx, task), { json: true, task: 'mock-plan', maxOutputTokens: 2500 });
     const raw = parseModelJson(reply);
     const list = (raw.questions || [])
-      .map((q) => ({ question: String(q?.question || '').trim().slice(0, 1200), category: String(q?.category || interviewType).slice(0, 60) }))
+      .map((q) => ({
+        question: String(q?.question || '').trim().slice(0, 1200),
+        category: String(q?.category || interviewType).slice(0, 60),
+        difficulty: ['easy', 'medium', 'hard'].includes(String(q?.difficulty).toLowerCase())
+          ? String(q.difficulty).toLowerCase()
+          : difficulty === 'mixed' ? 'medium' : difficulty,
+      }))
       .filter((q) => q.question.length >= 8)
       .slice(0, count);
     if (!list.length) throw new Error('No valid questions.');
     return { engine: 'model', questions: list };
   } catch (err) {
     logger.error(`[studio] mock plan failed: ${err.message}`);
-    const fb = buildTop10Fallback(resume, opts).map((q) => ({ question: q.question, category: q.category }));
+    const fb = buildTop10Fallback(resume, opts).map((q) => ({ question: q.question, category: q.category, difficulty: difficulty === 'mixed' ? 'medium' : difficulty }));
     return { engine: 'rules', questions: fb.slice(0, count) };
   }
 }

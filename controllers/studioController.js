@@ -731,7 +731,7 @@ export const startMock = asyncHandler(async (req, res) => {
   let planned;
   let engine;
   if (set?.questions?.length) {
-    planned = set.questions.slice(0, questionCount).map((q) => ({ question: q.question, category: q.category }));
+    planned = set.questions.slice(0, questionCount).map((q) => ({ question: q.question, category: q.category, difficulty: q.difficulty || undefined }));
     engine = set.engine;
   } else {
     const plan = await planMockQuestions(ctx.resume, { interviewType, difficulty, count: questionCount, ...genOpts(ctx) });
