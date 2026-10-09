@@ -590,8 +590,25 @@ export const downloadCoverLetter = asyncHandler(async (req, res) => {
  * ------------------------------------------------------------------ */
 
 export const createInterviewSet = asyncHandler(async (req, res) => {
-  const { versionId, jobTitle, company, jobDescription, experienceLevel } = req.body || {};
-  if (!String(jobTitle || '').trim() && !String(jobDescription || '').trim()) throw ApiError.badRequest('Add the target job title or job description.');
+  const { versionId, jobTitle, company, experienceLevel } = req.body || {};
+  // A one-line "description" is not enough to tailor to; treat it as missing.
+  let jobDescription = String(req.body?.jobDescription || '').trim();
+  if (jobDescription.length < 40) jobDescription = '';
+  if (!String(jobTitle || '').trim() && !jobDescription) throw ApiError.badRequest('Add the target job title or job description.');
+  // Only a job title: the AI first reads the candidate's saved resume and
+  // writes a typical description for that role, so the questions and
+  // answers are tailored to a real-looking job (same as cover letters).
+  let jobDescriptionSource = 'user';
+  if (!jobDescription) {
+    const base = await context(req.user._id, { versionId, jobTitle, company });
+    try {
+      jobDescription = (await generateJobDescription(base.resume, { ...genOpts(base), jobTitle, company, experienceLevel })).description;
+      jobDescriptionSource = 'ai';
+    } catch (err) {
+      logger.error(`[studio] interview set: job description generation failed: ${err.message}`);
+      throw new ApiError(503, 'The AI could not prepare this job right now. Paste the job description, or try again in a moment.');
+    }
+  }
   const ctx = await context(req.user._id, { versionId, jobDescription, jobTitle, company });
   const result = await generateTop10(ctx.resume, genOpts(ctx, { experienceLevel }));
   const set = await InterviewSession.create({
@@ -605,6 +622,7 @@ export const createInterviewSet = asyncHandler(async (req, res) => {
     message: 'Interview questions ready',
     data: {
       set,
+      jobDescriptionSource,
       note: result.note,
       engineNote: result.engine === 'rules' ? 'AI generation is unavailable right now, so these questions were built from your CV and the job description without a model. Answers are frameworks with [placeholders] for you to fill.' : result.partial ? 'Some questions were completed from our standard set because the AI response was incomplete.' : null,
     },
