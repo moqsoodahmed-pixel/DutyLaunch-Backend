@@ -50,17 +50,16 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date, select: false },
     role: { type: String, enum: ROLES, default: 'user', index: true },
     profile: { type: profileSchema, default: () => ({}) },
-    /* The one person this account builds resumes for (see
-       utils/resumeIdentity.js). Set by the first saved resume; kept even if
-       the career profile is deleted. */
-    resumeIdentity: {
-      name: { type: String, trim: true, maxlength: 120 },
-      lockedAt: { type: Date },
-    },
     company: { type: companySchema, default: undefined },
     savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date },
+    /* Resume Builder: the 3 free templates (see config/templates.js) can be
+       completed once per account; after that, any further resume — free
+       template or paid — requires payment. Set once, server-side only, by
+       POST /api/payments/consume-free-template. */
+    freeTemplateUsedAt: { type: Date, default: null },
+    freeTemplateUsedId: { type: String, trim: true, default: null },
   },
   { timestamps: true }
 );
@@ -101,7 +100,6 @@ userSchema.methods.toPublic = function toPublic() {
       resumeUpdatedAt: this.profile?.resumeUpdatedAt,
     },
     company: this.company,
-    resumeIdentityName: this.resumeIdentity?.name || null,
     savedJobs: this.savedJobs,
     createdAt: this.createdAt,
   };

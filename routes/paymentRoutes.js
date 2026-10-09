@@ -28,6 +28,10 @@ const failedSchema = z.object({
   reason: z.string().trim().max(300).optional(),
 });
 
+const consumeFreeTemplateSchema = z.object({
+  templateId: z.string().trim().regex(/^[a-z0-9-]{2,40}$/, 'Invalid id'),
+});
+
 // Public: whether payments are switched on (no secrets).
 router.get('/config', payments.getConfig);
 
@@ -39,5 +43,6 @@ router.post('/verify', protect, validate(verifySchema), payments.verifyPayment);
 router.post('/failed', protect, validate(failedSchema), payments.markFailed);
 router.get('/mine', protect, payments.myPayments);
 router.get('/entitlements', protect, payments.entitlements);
+router.post('/consume-free-template', protect, validate(consumeFreeTemplateSchema), payments.consumeFreeTemplate);
 
 export default router;

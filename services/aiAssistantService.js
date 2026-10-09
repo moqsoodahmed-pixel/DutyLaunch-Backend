@@ -324,7 +324,15 @@ export async function callGroq(messages, { fetchImpl = fetch } = {}) {
  *    URL. Kept separate from the free-text reply for reliability.
  * ------------------------------------------------------------------ */
 
+// Checked before the generic "resume|cv" rule below, and mutually exclusive
+// with it (see deriveActions) — "build/create/write/edit me a resume" wants
+// the Resume Builder itself, not the ATS checker. Kept as a deterministic
+// keyword rule, same as every other row here, rather than something the
+// model decides — a chat reply should never invent or guess at a URL.
+const BUILD_RESUME_TEST = /\b(build|create|make|write|generate|draft|edit|update|modify|change)\b.{0,20}\b(resume|cv)\b/i;
+
 const ACTION_RULES = [
+  { test: BUILD_RESUME_TEST, label: 'Build my resume', to: '/resume-builder?quickstart=1' },
   { test: /resume|cv\b/i, label: 'Check my resume', to: '/ats-resume-checker' },
   { test: /linkedin/i, label: 'Optimise my LinkedIn', to: '/career-tools/linkedin' },
   { test: /cover letter/i, label: 'Draft a cover letter', to: '/career-tools/cover-letter' },
@@ -339,9 +347,14 @@ const ACTION_RULES = [
 
 export function deriveActions(message, reply) {
   const haystack = `${message}\n${reply}`;
+  const buildIntent = BUILD_RESUME_TEST.test(haystack);
   const seen = new Set();
   const actions = [];
   for (const rule of ACTION_RULES) {
+    // "Build my resume" already covers it — showing "Check my resume" (the
+    // ATS checker) alongside it in the same reply is a redundant, confusing
+    // pair of resume links for one request.
+    if (buildIntent && rule.label === 'Check my resume') continue;
     if (rule.test.test(haystack) && !seen.has(rule.to)) {
       seen.add(rule.to);
       actions.push({ label: rule.label, to: rule.to });

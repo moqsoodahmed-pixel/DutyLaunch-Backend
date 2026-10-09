@@ -96,8 +96,63 @@ export const entitlements = asyncHandler(async (req, res) => {
       freeTemplates: FREE_TEMPLATE_IDS,
       paidTemplates: PAID_TEMPLATE_IDS,
       templatePrice: templatePrice(),
+      // The one-time free-template allowance (see models/User.js). Once
+      // true, the Resume Builder must treat ALL of FREE_TEMPLATE_IDS as
+      // locked for this account, same as an unpurchased paid template.
+      freeTemplateUsed: Boolean(req.user.freeTemplateUsedAt),
+      freeTemplateUsedId: req.user.freeTemplateUsedId || null,
     },
   });
+});
+
+/**
+ * POST /api/payments/consume-free-template { templateId }
+ *
+ * Marks the account's one-time free-template allowance as used. Called by
+ * the Resume Builder right before it hands over the finished file (download,
+ * or save-to-profile) for a free template — never on template *selection*,
+ * so previewing or starting a free template and changing your mind doesn't
+ * burn the allowance.
+ *
+ * Idempotent for the SAME template: if this account already used this exact
+ * template, that's treated as a success (e.g. re-downloading the same
+ * resume later) rather than an error. Using a *different* free template, or
+ * calling this a second time after already using one, is rejected — the
+ * allowance is one resume, not one call.
+ */
+export const consumeFreeTemplate = asyncHandler(async (req, res) => {
+  const canonical = canonicalTemplateId(req.body.templateId);
+  if (!canonical || !FREE_TEMPLATE_IDS.includes(canonical)) {
+    throw ApiError.badRequest('That is not one of the free templates.');
+  }
+
+  // Already used — same template is fine (idempotent), a different one is not.
+  if (req.user.freeTemplateUsedAt) {
+    if (req.user.freeTemplateUsedId === canonical) {
+      return sendSuccess(res, { data: { consumed: true, templateId: canonical, alreadyUsed: true } });
+    }
+    throw ApiError.forbidden("You've already used your one free resume template. Unlock a template to build another.");
+  }
+
+  // Atomic claim: only succeeds if freeTemplateUsedAt is still null at write
+  // time, so two near-simultaneous requests (e.g. a double-click) can't both
+  // "win" and record two different templates.
+  const updated = await req.user.constructor.findOneAndUpdate(
+    { _id: req.user._id, freeTemplateUsedAt: null },
+    { freeTemplateUsedAt: new Date(), freeTemplateUsedId: canonical },
+    { new: true }
+  );
+
+  if (!updated) {
+    // Lost the race, or someone used it a moment ago — re-check like above.
+    const fresh = await req.user.constructor.findById(req.user._id).select('freeTemplateUsedAt freeTemplateUsedId');
+    if (fresh?.freeTemplateUsedId === canonical) {
+      return sendSuccess(res, { data: { consumed: true, templateId: canonical, alreadyUsed: true } });
+    }
+    throw ApiError.forbidden("You've already used your one free resume template. Unlock a template to build another.");
+  }
+
+  sendSuccess(res, { data: { consumed: true, templateId: canonical, alreadyUsed: false } });
 });
 
 /** POST /api/payments/orders  { itemType, itemId } */
