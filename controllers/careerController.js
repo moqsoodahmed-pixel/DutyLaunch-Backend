@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { consentRecord } from '../utils/consent.js';
+import { logger } from '../utils/logger.js';
+import { generateJobDescription } from '../services/careerIntelligence/studioAi.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -555,8 +557,35 @@ export const optimize = asyncHandler(async (req, res) => {
   const { resume, doc } = await resolveResume(req);
   const override = await configOverride();
   const confirmedFacts = doc?.confirmedFacts || [];
+  // Hard limit for the whole request, so the browser (which waits 150 s)
+  // always gets an answer; the rewriter stops sending new AI requests at it.
+  const deadlineAt = Date.now() + (Number(process.env.AI_OPTIMIZE_TOTAL_MS) || 100000);
+
+  /* ATS keywords need a target. A real job description is best. With none
+     (a resume built from scratch), AI writes a TYPICAL posting for the
+     candidate's own profession, and its keywords guide the rewrite — but
+     the rewrite only uses keywords the candidate's own data already
+     supports; the rest are reported as gaps, never added. If this AI step
+     fails, the optimisation simply continues without keywords. */
+  let jobDescription = String(req.body?.jobDescription || '').trim();
+  let keywordSource = jobDescription ? 'job-description' : 'none';
+  let targetRole = '';
+  if (!jobDescription && req.body?.typicalRole) {
+    targetRole = String(resume.personal?.headline || (resume.experience || []).find((r) => r.title)?.title || '').trim();
+    if (targetRole) {
+      try {
+        const base = analyzeCandidate(resume, { confirmedFacts, configOverride: override });
+        const typical = await generateJobDescription(resume, { profile: base.profile, confirmedFacts, jobTitle: targetRole });
+        jobDescription = String(typical?.description || '').trim();
+        if (jobDescription) keywordSource = 'typical-role';
+      } catch (err) {
+        logger.warn(`[career] typical-role keywords unavailable: ${err.message}`);
+      }
+    }
+  }
+
   const analysisOpts = {
-    jobDescription: req.body?.jobDescription,
+    jobDescription,
     jobHints: req.body?.jobHints || {},
     confirmedFacts,
     configOverride: override,
@@ -570,6 +599,7 @@ export const optimize = asyncHandler(async (req, res) => {
     profile: analysis.profile,
     confirmedFacts,
     scope: req.body?.scope || 'all',
+    deadlineAt,
   });
 
   if (!req.body?.autoApply) {
@@ -620,6 +650,10 @@ export const optimize = asyncHandler(async (req, res) => {
       considered: result.summary?.bulletsConsidered ?? null,
       applied: true,
       mode: analysis.jobIntel ? 'job-matched' : 'general',
+      // Where the keywords came from: a pasted job description, a typical
+      // posting for the profession (AI-written), or nowhere (general mode).
+      keywordSource,
+      targetRole: keywordSource === 'typical-role' ? targetRole : '',
       optimizedResume: lean,
       changelog,
       comparison,

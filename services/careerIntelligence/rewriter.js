@@ -565,12 +565,12 @@ function namedEntitiesIn(text) {
  * Returns proposals — it does NOT mutate the resume. Applying a proposal
  * is a separate, explicit action the candidate takes (spec §28).
  */
-export async function proposeRewrites(resume, { jobIntel, keywordResult, profile, confirmedFacts = [], scope = 'all' } = {}) {
+export async function proposeRewrites(resume, { jobIntel, keywordResult, profile, confirmedFacts = [], scope = 'all', deadlineAt: deadlineOverride = 0 } = {}) {
   const context = buildRewriteContext(resume, { jobIntel, keywordResult, profile, confirmedFacts });
   // Time budget: stop sending NEW requests after this long, so the browser
   // (which waits 150 s) always gets an answer. Parts not reached keep the
   // candidate's own wording and are reported as "could not be rewritten".
-  const deadlineAt = Date.now() + (Number(process.env.AI_OPTIMIZE_BUDGET_MS) || 75000);
+  const deadlineAt = deadlineOverride || Date.now() + (Number(process.env.AI_OPTIMIZE_BUDGET_MS) || 75000);
   // The parsed resume's own text is always part of the evidence, so
   // validation still works when the raw upload text was not sent along.
   const ownText = [resume._source?.rawText || '', collectText(resume).join('\n')].join('\n');

@@ -348,6 +348,9 @@ export const careerOptimizeSchema = z.object({
   // Upload flow: apply the proposals that passed the integrity checks to a
   // copy of the resume and return the whole optimised document.
   autoApply: z.boolean().optional(),
+  // Built from scratch (no job description): let AI write a typical posting
+  // for the candidate's own profession, so ATS keywords have a target.
+  typicalRole: z.boolean().optional(),
 });
 
 export const careerApplyOptimizationSchema = z.object({
