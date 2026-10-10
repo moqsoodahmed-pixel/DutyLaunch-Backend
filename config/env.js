@@ -14,18 +14,24 @@ const optionalDefaults = {
   MAX_UPLOAD_MB: '5',
   RATE_LIMIT_WINDOW_MIN: '15',
   RATE_LIMIT_MAX: '300',
-  // AI provider for the career tools: 'router', 'openai', 'groq', 'grok'
-  // or 'mistral'.
+  // AI provider for the career tools: 'router', 'gemini', 'openai', 'groq',
+  // 'grok' or 'mistral'.
   //   router — multi-provider mode: each task goes to the best available
-  //            provider (OpenAI first for resume writing, then Groq, Grok,
-  //            Mistral), with automatic fallback. Recommended.
+  //            provider (Gemini first for resume writing, then OpenAI, Groq,
+  //            Grok, Mistral), with automatic fallback. Recommended.
+  //   gemini — Google Gemini only (requires GEMINI_API_KEY)
   //   openai — OpenAI only (requires OPENAI_API_KEY)
   //   groq   — Groq only (AI_PROVIDER=groq forces single-provider Groq)
   //   grok   — xAI Grok only (requires GROK_API_KEY)
   //   mistral — Mistral only (requires MISTRAL_API_KEY)
   // When unset: OpenAI if OPENAI_API_KEY is set, otherwise router if any of
-  // GROQ_API_KEY / MISTRAL_API_KEY / GROK_API_KEY is set.
+  // GEMINI_API_KEY / GROQ_API_KEY / MISTRAL_API_KEY / GROK_API_KEY is set.
   AI_PROVIDER: '',
+  // Google Gemini via its native API (works with AIza and AQ. keys). Create a key at
+  // https://aistudio.google.com/apikey . Models: gemini-2.5-flash (default),
+  // gemini-2.5-flash-lite, gemini-3-flash-preview.
+  GEMINI_MODEL: 'gemini-2.5-flash',
+  GEMINI_MODEL_FALLBACKS: 'gemini-2.5-flash-lite,gemini-3-flash-preview',
   // OpenAI (ChatGPT). Used by the router (Chat Completions) and by
   // AI_PROVIDER=openai (Responses API).
   OPENAI_MODEL: 'gpt-4.1-mini',
@@ -100,6 +106,8 @@ export function loadEnv() {
     // Assistant endpoint checks this at request time (not at boot) so the
     // rest of the API keeps working even before it's configured.
     aiProvider: (process.env.AI_PROVIDER || '').trim().toLowerCase(),
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    geminiModel: process.env.GEMINI_MODEL,
     openaiApiKey: process.env.OPENAI_API_KEY || '',
     openaiModel: process.env.OPENAI_MODEL,
     openaiTimeoutMs: Number(process.env.OPENAI_TIMEOUT_MS) || 60000,

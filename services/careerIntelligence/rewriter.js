@@ -14,7 +14,7 @@
  * "why did DutyLaunch make this change?" explanation (spec §28, §29).
  */
 
-import { callModel, isProviderUsable } from './aiClient.js';
+import { callModel, aiParallelism } from './aiClient.js';
 import { logger } from '../../utils/logger.js';
 import { MATCH, stuffingBudget } from './keywordIntelligence.js';
 import { classifyClaim } from './integrity.js';
@@ -567,6 +567,10 @@ function namedEntitiesIn(text) {
  */
 export async function proposeRewrites(resume, { jobIntel, keywordResult, profile, confirmedFacts = [], scope = 'all' } = {}) {
   const context = buildRewriteContext(resume, { jobIntel, keywordResult, profile, confirmedFacts });
+  // Time budget: stop sending NEW requests after this long, so the browser
+  // (which waits 150 s) always gets an answer. Parts not reached keep the
+  // candidate's own wording and are reported as "could not be rewritten".
+  const deadlineAt = Date.now() + (Number(process.env.AI_OPTIMIZE_BUDGET_MS) || 75000);
   // The parsed resume's own text is always part of the evidence, so
   // validation still works when the raw upload text was not sent along.
   const ownText = [resume._source?.rawText || '', collectText(resume).join('\n')].join('\n');
@@ -617,7 +621,7 @@ export async function proposeRewrites(resume, { jobIntel, keywordResult, profile
   }
   if (bulletTargets.length) {
     jobs.push(() =>
-      rewriteBullets(bulletTargets, context, { sourceText, ownText, confirmedFacts, rejections, protectedWords }).then((run) => Object.assign(bulletRun, run))
+      rewriteBullets(bulletTargets, context, { sourceText, ownText, confirmedFacts, rejections, protectedWords, deadlineAt }).then((run) => Object.assign(bulletRun, run))
     );
   }
   /* OpenAI handles parallel requests comfortably. The free providers it falls
@@ -628,7 +632,7 @@ export async function proposeRewrites(resume, { jobIntel, keywordResult, profile
      rest are then sent the safe way. */
   const [first, ...rest] = jobs;
   if (first) await first();
-  if (isProviderUsable('openai')) {
+  if (aiParallelism() > 1) {
     await Promise.all(rest.map((run) => run()));
   } else {
     for (const run of rest) {
@@ -712,7 +716,7 @@ function describeChange(original, proposed, keywords) {
   return parts.join(' ');
 }
 
-async function rewriteBullets(targets, context, { sourceText, ownText, confirmedFacts, rejections = [], protectedWords = null }) {
+async function rewriteBullets(targets, context, { sourceText, ownText, confirmedFacts, rejections = [], protectedWords = null, deadlineAt = 0 }) {
   const BATCH = 8;
   const CONCURRENCY = 3;
   const batches = [];
@@ -735,8 +739,15 @@ async function rewriteBullets(targets, context, { sourceText, ownText, confirmed
 
   // First group alone (see proposeRewrites), then fan out only if OpenAI is usable.
   if (batches.length) await runGroup([batches[0]]);
-  const concurrency = isProviderUsable('openai') ? CONCURRENCY : 1;
+  const concurrency = Math.min(CONCURRENCY, aiParallelism());
   for (let i = 1; i < batches.length; i += concurrency) {
+    if (deadlineAt && Date.now() >= deadlineAt) {
+      const left = batches.length - i;
+      failedBatches += left;
+      lastError = lastError || Object.assign(new Error('The time budget for this optimisation was used up.'), { rateLimited: false });
+      logger.warn(`[career-intelligence] time budget used up; ${left} of ${batches.length} rewrite batch(es) were not sent`);
+      break;
+    }
     // eslint-disable-next-line no-await-in-loop
     await runGroup(batches.slice(i, i + concurrency));
   }

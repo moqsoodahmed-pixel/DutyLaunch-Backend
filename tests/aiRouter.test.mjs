@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { callModel, aiProvider, aiStatus, getAiUsage, TASK_ROUTES, isProviderUsable, __resetProviderCooldowns } from '../services/careerIntelligence/aiClient.js';
+import { callModel, aiProvider, aiStatus, getAiUsage, TASK_ROUTES, isProviderUsable, aiParallelism, __resetProviderCooldowns } from '../services/careerIntelligence/aiClient.js';
 
 /**
  * Router-mode tests (AI_PROVIDER=router). A fake fetch stands in for
@@ -9,20 +9,23 @@ import { callModel, aiProvider, aiStatus, getAiUsage, TASK_ROUTES, isProviderUsa
 
 const GROQ    = /api\.groq\.com/;
 const OPENAI  = /api\.openai\.com/;
+const GEMINI  = /generativelanguage\.googleapis\.com/;
 const MISTRAL = /api\.mistral\.ai/;
 const GROK    = /api\.x\.ai/;
 
 const ok   = (text, finish = 'stop') => ({ status: 200, body: { choices: [{ message: { content: text }, finish_reason: finish }], usage: { prompt_tokens: 10, completion_tokens: 5 } } });
 const fail = (status, error = {})    => ({ status, body: { error } });
+/** Gemini's native response shape. */
+const okGemini = (text, finish = 'STOP') => ({ status: 200, body: { candidates: [{ content: { parts: [{ text }] }, finishReason: finish }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } } });
 
 /** script: { groq: [resp, ...], openai: [...], mistral: [...], grok: [...] } */
 function fakeProviders(script = {}) {
   const calls = [];
   const queues = Object.fromEntries(Object.entries(script).map(([k, v]) => [k, [...v]]));
   const fetchImpl = async (url, opts = {}) => {
-    const name = GROQ.test(url) ? 'groq' : OPENAI.test(url) ? 'openai' : MISTRAL.test(url) ? 'mistral' : GROK.test(url) ? 'grok' : 'unknown';
+    const name = GROQ.test(url) ? 'groq' : OPENAI.test(url) ? 'openai' : GEMINI.test(url) ? 'gemini' : MISTRAL.test(url) ? 'mistral' : GROK.test(url) ? 'grok' : 'unknown';
     calls.push({ name, url, body: JSON.parse(opts.body), headers: opts.headers });
-    const next = (queues[name] || []).shift() || ok(`{"from":"${name}"}`);
+    const next = (queues[name] || []).shift() || (name === 'gemini' ? okGemini(`{"from":"${name}"}`) : ok(`{"from":"${name}"}`));
     return new Response(JSON.stringify(next.body), { status: next.status });
   };
   return { fetchImpl, calls };
@@ -35,6 +38,10 @@ test.beforeEach(() => {
   process.env.AI_PROVIDER = 'router';
   process.env.GROQ_API_KEY    = 'gsk_test';
   process.env.OPENAI_API_KEY  = 'sk_test';
+  // Gemini is optional: tests that need it set the key themselves.
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_MODEL;
+  delete process.env.GEMINI_MODEL_FALLBACKS;
   process.env.MISTRAL_API_KEY = 'mis_test';
   // Use real Groq model names (not OpenAI-proxied ones).
   process.env.GROQ_MODEL          = 'llama-3.3-70b-versatile';
@@ -57,7 +64,7 @@ test('router mode is active when free keys are present', () => {
   // Resume rewriting goes to OpenAI first.
   assert.deepEqual(status.routes['resume-rewrite'], ['openai', 'groq', 'mistral']);
   assert.equal(status.providers.openai.model, 'gpt-4.1-mini');
-  assert.equal(status.providers.gemini, undefined, 'Gemini is no longer a provider');
+  assert.equal(status.providers.gemini.configured, false, 'Gemini is a provider but has no key in this test');
   // Keys must never appear in the status object
   assert.equal(JSON.stringify(status).includes('gsk_test'), false, 'status never includes keys');
 });
@@ -304,15 +311,6 @@ test('quota exhaustion everywhere is not reported as a retryable rate limit', as
   assert.equal(calls.length, 3, 'no second pass after quota errors');
 });
 
-test('Gemini is gone: a leftover GEMINI_API_KEY is never used', async () => {
-  process.env.GEMINI_API_KEY = 'gem_leftover';
-  const { fetchImpl, calls } = fakeProviders();
-  await callModel(messages, { task: 'interview-top10', fetchImpl });
-  assert.ok(calls.every((c) => c.name !== 'unknown'), 'only known providers are called');
-  assert.equal(aiStatus().providers.gemini, undefined);
-  delete process.env.GEMINI_API_KEY;
-});
-
 test('OpenAI "credit_balance_exhausted" is treated as no credit: skipped at once, no waiting', async () => {
   const { fetchImpl, calls } = fakeProviders({ openai: [fail(429, { code: 'credit_balance_exhausted' })] });
   const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
@@ -352,4 +350,133 @@ test('when every provider is cooling down the router still tries instead of refu
   const { fetchImpl } = fakeProviders();
   const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
   assert.match(text, /from/);
+});
+
+/* ---------------- Gemini ---------------- */
+
+const geminiBadKey = () => fail(400, { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] });
+const geminiMinuteLimit = () => fail(429, { code: 429, message: 'You exceeded your current quota.', status: 'RESOURCE_EXHAUSTED', details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '1s' }] });
+const geminiDailyLimit = () => fail(429, { code: 429, message: 'Quota exceeded for metric generate_content_free_tier_requests, limit: 250 per day', status: 'RESOURCE_EXHAUSTED', details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] });
+
+test('Gemini: resume tasks go to Gemini first, cover letters to Mistral first, mock interview to Groq first', () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const routes = aiStatus().routes;
+  assert.equal(routes['resume-rewrite'][0], 'gemini');
+  assert.equal(routes['resume-summary'][0], 'gemini');
+  assert.equal(routes['cover-letter'][0], 'mistral');
+  assert.equal(routes['mock-plan'][0], 'groq');
+  assert.equal(aiStatus().providers.gemini.model, 'gemini-2.5-flash');
+});
+
+test('Gemini: uses the native API with the key in the x-goog-api-key header (works with AIza and AQ. keys)', async () => {
+  process.env.GEMINI_API_KEY = 'AQ.test_key_value';
+  const { fetchImpl, calls } = fakeProviders();
+  await callModel(messages, { json: true, task: 'resume-rewrite', maxOutputTokens: 2500, fetchImpl });
+  const c = calls[0];
+  assert.equal(c.name, 'gemini');
+  assert.equal(c.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+  assert.ok(!c.url.includes('AQ.test_key_value') && !c.url.includes('key='), 'the key is never put in the URL');
+  assert.equal(c.headers['x-goog-api-key'], 'AQ.test_key_value');
+  assert.equal(c.headers.Authorization, undefined);
+  assert.deepEqual(c.body.systemInstruction, { parts: [{ text: 'rules' }] });
+  assert.deepEqual(c.body.contents, [{ role: 'user', parts: [{ text: 'Return JSON.' }] }]);
+  assert.equal(c.body.generationConfig.maxOutputTokens, 2500);
+  assert.equal(c.body.generationConfig.temperature, 0.3);
+  assert.equal(c.body.generationConfig.responseMimeType, 'application/json');
+  assert.deepEqual(c.body.generationConfig.thinkingConfig, { thinkingBudget: 0 });
+});
+
+test('Gemini: the reply text and token usage are read from the native response', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const { fetchImpl } = fakeProviders({ gemini: [okGemini('hello world')] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, 'hello world');
+});
+
+test('Gemini: a cut-off JSON answer (MAX_TOKENS) is not accepted; the next provider is tried', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const { fetchImpl, calls } = fakeProviders({ gemini: [okGemini('{"a":', 'MAX_TOKENS'), okGemini('{"a":', 'MAX_TOKENS')] });
+  const text = await callModel(messages, { json: true, task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"openai"}');
+  assert.ok(calls.some((c) => c.name === 'openai'));
+});
+
+test('Gemini: a safety-blocked request is an error, not an empty resume', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const blocked = { status: 200, body: { promptFeedback: { blockReason: 'SAFETY' } } };
+  const { fetchImpl } = fakeProviders({ gemini: [blocked, blocked] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"openai"}');
+});
+
+test('Gemini: a 401 "invalid authentication credentials" disables Gemini and the next provider answers', async () => {
+  process.env.GEMINI_API_KEY = 'AQ.something';
+  const { fetchImpl } = fakeProviders({ gemini: [fail(401, { code: 401, status: 'UNAUTHENTICATED', message: 'Request had invalid authentication credentials.' })] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"openai"}');
+  assert.equal(isProviderUsable('gemini'), false);
+});
+
+test('Gemini: GEMINI_MODEL picks the model, and a missing model falls back to the next one', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  process.env.GEMINI_MODEL = 'gemini-9-imaginary';
+  const { fetchImpl, calls } = fakeProviders({ gemini: [fail(404, { code: 404, status: 'NOT_FOUND', message: 'model not found' })] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"gemini"}');
+  assert.deepEqual(calls.map((c) => c.url.match(/models\/([^:]+):/)[1]), ['gemini-9-imaginary', 'gemini-2.5-flash-lite']);
+});
+
+test('Gemini: an invalid key (HTTP 400 "API key not valid") hands over to the next provider and disables Gemini for a while', async () => {
+  process.env.GEMINI_API_KEY = 'gem_bad';
+  const first = fakeProviders({ gemini: [geminiBadKey()] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl: first.fetchImpl });
+  assert.equal(text, '{"from":"openai"}');
+  assert.equal(isProviderUsable('gemini'), false);
+  assert.match(aiStatus().unavailable.gemini, /key was rejected/);
+
+  const second = fakeProviders();
+  await callModel(messages, { task: 'resume-rewrite', fetchImpl: second.fetchImpl });
+  assert.deepEqual(second.calls.map((c) => c.name), ['openai'], 'Gemini is skipped during the cooldown');
+});
+
+test('Gemini: a per-minute limit is retried, not treated as a dead key', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const { fetchImpl } = fakeProviders({ gemini: [geminiMinuteLimit()] });
+  await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(isProviderUsable('gemini'), true);
+});
+
+test('Gemini: a used-up DAILY free quota disables it and the next provider answers at once', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const { fetchImpl, calls } = fakeProviders({ gemini: [geminiDailyLimit()] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"openai"}');
+  assert.deepEqual(calls.map((c) => c.name), ['gemini', 'openai']);
+  assert.equal(isProviderUsable('gemini'), false);
+});
+
+test('Gemini: AI_PROVIDER=gemini uses only Gemini', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  process.env.AI_PROVIDER = 'gemini';
+  assert.equal(aiProvider(), 'gemini');
+  const { fetchImpl, calls } = fakeProviders({ gemini: [fail(503)] });
+  await assert.rejects(() => callModel(messages, { task: 'resume-rewrite', fetchImpl }));
+  assert.ok(calls.every((c) => c.name === 'gemini'), 'never falls back to another provider');
+});
+
+test('Gemini: when OpenAI has no credit, Gemini still answers resume tasks (OpenAI is not needed)', async () => {
+  process.env.GEMINI_API_KEY = 'gem_test';
+  const { fetchImpl, calls } = fakeProviders({ openai: [fail(429, { code: 'credit_balance_exhausted' })] });
+  const text = await callModel(messages, { task: 'resume-rewrite', fetchImpl });
+  assert.equal(text, '{"from":"gemini"}');
+  assert.deepEqual(calls.map((c) => c.name), ['gemini']);
+});
+
+test('parallelism: OpenAI allows 3 at once, Gemini alone 2, free fallbacks only 1', () => {
+  assert.equal(aiParallelism(), 3); // OpenAI key is set in beforeEach
+  delete process.env.OPENAI_API_KEY;
+  process.env.GEMINI_API_KEY = 'gem_test';
+  assert.equal(aiParallelism(), 2);
+  delete process.env.GEMINI_API_KEY;
+  assert.equal(aiParallelism(), 1);
 });

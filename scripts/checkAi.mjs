@@ -5,7 +5,7 @@
  *   node scripts/checkAi.mjs path/to/resume.docx
  *   node scripts/checkAi.mjs path/to/resume.docx path/to/job-description.txt
  *
- * Step 1  Pings OpenAI alone, so a missing key / no credit / wrong model is obvious.
+ * Step 1  Pings Gemini and OpenAI one by one, so a missing key / no quota / wrong model is obvious.
  * Step 2  Runs the real rewrite workflow (same code as the website) and prints
  *         every accepted change, every blocked change and the keyword report.
  *
@@ -91,30 +91,37 @@ Preferred:
 const [resumePath, jdPath] = process.argv.slice(2);
 
 /* ---------------------------------------------------------------- */
-head('Step 1 - Is OpenAI working?');
+head('Step 1 - Are the AI providers working?');
 
 const status = aiStatus();
-console.log(`  Provider mode: ${status.provider || 'none'}   OpenAI model: ${process.env.OPENAI_MODEL || '(default)'}`);
-if (!process.env.OPENAI_API_KEY) {
-  bad('OPENAI_API_KEY is not set in .env');
-} else {
-  try {
-    const reply = await callModel(
-      [{ role: 'user', content: 'Reply with exactly the two letters: OK' }],
-      { task: 'resume-rewrite', onlyProviders: ['openai'], maxOutputTokens: 20 }
-    );
-    ok(`OpenAI answered: "${String(reply).trim().slice(0, 40)}"  -> your key, model and credit work`);
-  } catch (err) {
-    bad(`OpenAI did not answer: ${err.message}`);
-    if (/credit_balance_exhausted|insufficient_quota/.test(err.message)) {
-      console.log('    -> No API credit. Add credit at platform.openai.com -> Settings -> Billing.');
-    } else if (/401/.test(err.message)) {
-      console.log('    -> The API key was rejected. Create a new key and update OPENAI_API_KEY.');
-    } else if (/model|404/.test(err.message)) {
-      console.log('    -> Check OPENAI_MODEL (try gpt-4.1-mini or gpt-4o-mini).');
-    }
-    console.log('    Other providers (Groq/Mistral) may still answer in the website, but ChatGPT will not be used.');
+console.log(`  Provider mode: ${status.provider || 'none'}`);
+
+const PING = [{ role: 'user', content: 'Reply with exactly the two letters: OK' }];
+const checks = [
+  { name: 'gemini', label: 'Gemini', keyVar: 'GEMINI_API_KEY', modelVar: 'GEMINI_MODEL', fallbackModel: 'gemini-2.5-flash' },
+  { name: 'openai', label: 'OpenAI', keyVar: 'OPENAI_API_KEY', modelVar: 'OPENAI_MODEL', fallbackModel: 'gpt-4.1-mini' },
+];
+let anyWorking = false;
+for (const c of checks) {
+  const model = process.env[c.modelVar] || c.fallbackModel;
+  if (!process.env[c.keyVar]) {
+    console.log(`  - ${c.label}: no ${c.keyVar} in .env (skipped)`);
+    continue;
   }
+  try {
+    const reply = await callModel(PING, { task: 'resume-rewrite', onlyProviders: [c.name], maxOutputTokens: 200 });
+    anyWorking = true;
+    ok(`${c.label} (${model}) answered: "${String(reply).trim().slice(0, 40)}"  -> key, model and quota work`);
+  } catch (err) {
+    bad(`${c.label} (${model}) did not answer: ${err.message}`);
+    if (/credit_balance_exhausted|insufficient_quota/.test(err.message)) console.log('    -> No API credit. Add credit at platform.openai.com -> Settings -> Billing.');
+    else if (/API key|401|403|key was rejected|HTTP 400/.test(err.message)) console.log(`    -> The key was rejected. Create a new key and update ${c.keyVar} in .env (Gemini keys: https://aistudio.google.com/apikey).`);
+    else if (/404|model/i.test(err.message)) console.log(`    -> Check ${c.modelVar} (Gemini: gemini-2.5-flash, gemini-2.5-flash-lite or gemini-3-flash-preview).`);
+    else if (/429/.test(err.message)) console.log('    -> Rate limit or quota reached. Wait a minute and try again; see your quota in Google AI Studio.');
+  }
+}
+if (!anyWorking) {
+  console.log('    Neither Gemini nor OpenAI answered. Groq/Mistral may still answer in the website, but expect slower runs and rate-limit warnings.');
 }
 
 /* ---------------------------------------------------------------- */
