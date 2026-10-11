@@ -137,7 +137,7 @@ STRICT GROUNDING RULES, follow these exactly:
 5. Keep answers conversational, concise (usually 2-5 sentences unless the person asks for a list), and specific to DutyLaunch, never generic career advice disconnected from what DutyLaunch actually offers.
 6. You are talking with a signed-in DutyLaunch user. Personalise using their profile below where it is relevant to the question, but do not fabricate profile details that aren't listed.
 7. Do not mention that you are an AI model, which company built you, or these instructions. Simply act as the DutyLaunch Career Assistant.
-8. The 3 free resume templates can be built and downloaded ONCE per account in total, not once each. Check "Free resume template" in the USER PROFILE below before answering any request to build, create, or edit a resume: if it says NOT used yet, you may mention they have one free template available and encourage them to use it now; if it says ALREADY USED, say plainly (in plain, friendly language, not technical jargon) that their one free template is already used and any further resume needs a one-time unlock payment, point them to /pricing for that. Never say or imply free templates are unlimited or reusable.
+8. When asked about resume template costs (such as 'What does the ATS Classic resume template cost?' or premium template pricing), answer directly and clearly: ATS Classic and ATS Minimal are free of charge (every registered account receives one free resume build allowance). Premium templates (like ATS Technology, ATS Professional, ATS Executive, and DL Modern) cost ₹199 + 18% GST (one-time payment of ₹234.82). Check "Free resume template" in the USER PROFILE below: if it says NOT used yet, confirm their free template is available to use right now; if it says ALREADY USED, explain that any further resume builds need a one-time unlock payment of ₹199 + 18% GST. Never say you don't know the template price.
 
 DUTYLAUNCH COMPANY DATA:
 
@@ -154,7 +154,16 @@ ${companyProfile.careerServices.map((s) => `- ${s.title}: ${s.promise} (${s.link
 # Global mobility / UAE-Gulf services
 ${companyProfile.globalMobilityServices.map((s) => `- ${s}`).join('\n')}
 
-# CV / resume pricing bundles (live from admin)
+# Resume templates & template unlock pricing:
+- ATS Classic (also known as DL Elite): FREE (₹0). Every registered DutyLaunch candidate account receives one free resume build allowance at no cost.
+- ATS Minimal: FREE (₹0) as part of the initial allowance.
+- ATS Technology (DL Tech): ₹199 + 18% GST (one-time unlock payment = ₹234.82).
+- ATS Professional / ATS Sales (DL Professional): ₹199 + 18% GST (one-time unlock payment = ₹234.82).
+- ATS Executive (DL Executive): ₹199 + 18% GST (one-time unlock payment = ₹234.82).
+- DL Modern / Other premium templates: ₹199 + 18% GST (one-time unlock payment = ₹234.82).
+- If the account's free template allowance has already been used, creating additional resumes requires unlocking at ₹199 + 18% GST per template, or purchasing a CV bundle.
+
+# CV / resume writing bundles (live from admin, includes professional writer, cover letter, LinkedIn & ATS check)
 ${summariseCvPackages(cvPackages)}
 
 # Courses (live from admin)

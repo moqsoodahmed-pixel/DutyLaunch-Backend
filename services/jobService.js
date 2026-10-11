@@ -50,7 +50,8 @@ export async function listJobs(query, options = {}) {
 
 export async function getJobBySlugOrId(idOrSlug, { publicOnly = true } = {}) {
   const byId = /^[a-f\d]{24}$/i.test(idOrSlug);
-  const filter = byId ? { _id: idOrSlug } : { slug: idOrSlug };
+  const normalizedSlug = (idOrSlug || '').replace(/counsellar/gi, 'counsellor');
+  const filter = byId ? { _id: idOrSlug } : { $or: [{ slug: idOrSlug }, { slug: normalizedSlug }] };
   if (publicOnly) filter.status = 'published';
 
   const job = await Job.findOne(filter);
