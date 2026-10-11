@@ -717,8 +717,20 @@ export function aiStatus() {
  *
  * options: { json?: boolean, task?: string, maxOutputTokens?: number, fetchImpl? }
  */
-export async function callModel(messages, options = {}) {
-  if (override) return override(messages, options);
+/** House style: generated text must not contain em or en dashes. */
+const STYLE_RULE = 'STYLE: Never use em dashes or en dashes in any text you write. Use commas, colons, full stops or the word "to" for ranges instead.';
+
+function withStyleRule(messages) {
+  const list = Array.isArray(messages) ? messages.map((m) => ({ ...m })) : [];
+  const i = list.findIndex((m) => m.role === 'system');
+  if (i >= 0) list[i].content = `${list[i].content}\n\n${STYLE_RULE}`;
+  else list.unshift({ role: 'system', content: STYLE_RULE });
+  return list;
+}
+
+export async function callModel(rawMessages, options = {}) {
+  if (override) return override(rawMessages, options);
+  const messages = withStyleRule(rawMessages);
   const provider = aiProvider();
   if (!provider) throw new Error('No AI model is configured in this environment.');
   if (provider === 'openai') return callOpenAi(messages, options, settings(), options.fetchImpl || fetch);

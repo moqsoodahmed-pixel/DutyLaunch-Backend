@@ -13,13 +13,13 @@
 export const cvPackages = [
   {
     name: 'Early Career',
-    experienceBand: '0–3 years',
+    experienceBand: '0 to 3 years',
     experienceMin: 0,
     experienceMax: 3,
     price: 599,
     tagline: 'A first CV that actually gets read.',
     bestFor: 'Students, fresh graduates and anyone in their first few roles.',
-    deliveryDays: '2–3 days',
+    deliveryDays: '2 to 3 days',
     revisionWindow: '1 month of unlimited revisions',
     order: 1,
     features: [
@@ -27,19 +27,19 @@ export const cvPackages = [
       { label: 'Customised cover letter', included: true },
       { label: 'LinkedIn profile optimisation', included: true },
       { label: '1 month unlimited revisions', included: true },
-      { label: '2–3 day delivery', included: true },
+      { label: '2 to 3 day delivery', included: true },
       { label: 'Positioning for internships, trainee and entry-level roles', included: true },
     ],
   },
   {
     name: 'Advanced Career',
-    experienceBand: '4–7 years',
+    experienceBand: '4 to 7 years',
     experienceMin: 4,
     experienceMax: 7,
     price: 899,
     tagline: 'Turn a list of duties into a record of impact.',
     bestFor: 'Professionals moving into specialist or first-line management roles.',
-    deliveryDays: '2–3 days',
+    deliveryDays: '2 to 3 days',
     revisionWindow: '1 month of unlimited revisions',
     isPopular: true,
     order: 2,
@@ -48,20 +48,20 @@ export const cvPackages = [
       { label: 'Customised cover letter', included: true },
       { label: 'LinkedIn profile optimisation', included: true },
       { label: '1 month unlimited revisions', included: true },
-      { label: '2–3 day delivery', included: true },
+      { label: '2 to 3 day delivery', included: true },
       { label: 'Achievement rewriting with measurable outcomes', included: true },
       { label: 'Keyword mapping against your target roles', included: true },
     ],
   },
   {
     name: 'Senior Career',
-    experienceBand: '8–14 years',
+    experienceBand: '8 to 14 years',
     experienceMin: 8,
     experienceMax: 14,
     price: 1199,
     tagline: 'A senior profile that reads like a shortlist.',
     bestFor: 'Managers and senior specialists applying for leadership roles.',
-    deliveryDays: '2–3 days',
+    deliveryDays: '2 to 3 days',
     revisionWindow: '1 month of unlimited revisions',
     order: 3,
     features: [
@@ -69,7 +69,7 @@ export const cvPackages = [
       { label: 'Customised cover letter', included: true },
       { label: 'LinkedIn profile optimisation', included: true },
       { label: '1 month unlimited revisions', included: true },
-      { label: '2–3 day delivery', included: true },
+      { label: '2 to 3 day delivery', included: true },
       { label: 'Achievement rewriting with measurable outcomes', included: true },
       { label: 'Keyword mapping against your target roles', included: true },
       { label: 'Leadership and scope-of-responsibility framing', included: true },
@@ -83,7 +83,7 @@ export const cvPackages = [
     price: 1799,
     tagline: 'Board-level positioning, written for the people who decide.',
     bestFor: 'Heads of function, directors and C-suite candidates.',
-    deliveryDays: '2–3 days',
+    deliveryDays: '2 to 3 days',
     revisionWindow: '1 month of unlimited revisions',
     order: 4,
     features: [
@@ -91,7 +91,7 @@ export const cvPackages = [
       { label: 'Customised cover letter', included: true },
       { label: 'LinkedIn profile optimisation', included: true },
       { label: '1 month unlimited revisions', included: true },
-      { label: '2–3 day delivery', included: true },
+      { label: '2 to 3 day delivery', included: true },
       { label: 'Achievement rewriting with measurable outcomes', included: true },
       { label: 'Keyword mapping against your target roles', included: true },
       { label: 'Leadership and scope-of-responsibility framing', included: true },
@@ -108,7 +108,7 @@ export const documentationServices = [
       'Apostille under the Hague Convention for educational, personal and commercial documents going to member countries. We handle the state-level verification and the MEA stamp, and return the document to you.',
     documentsRequired: ['Original certificate', 'Passport copy', 'Signed authorisation letter'],
     steps: ['Document check', 'State-level verification', 'MEA apostille', 'Return delivery'],
-    processingTime: 'Varies by issuing state — confirmed before you pay',
+    processingTime: 'Varies by issuing state, confirmed before you pay',
     priceOnRequest: true,
     order: 1,
   },
@@ -119,7 +119,7 @@ export const documentationServices = [
       'Attestation at the destination country embassy for documents going to non-Hague countries, including the UAE and wider GCC. Required before most employment and family visas are issued.',
     documentsRequired: ['Original document', 'Passport copy', 'Visa copy if already issued'],
     steps: ['Notary and state verification', 'MEA attestation', 'Embassy attestation', 'Return delivery'],
-    processingTime: 'Varies by embassy — confirmed before you pay',
+    processingTime: 'Varies by embassy, confirmed before you pay',
     priceOnRequest: true,
     order: 2,
   },
@@ -130,7 +130,7 @@ export const documentationServices = [
       'Degree, diploma and mark sheet attestation for employment and higher study abroad, including university verification where the destination authority asks for it.',
     documentsRequired: ['Original degree or diploma', 'Mark sheets', 'Passport copy'],
     steps: ['University verification', 'State HRD attestation', 'MEA attestation', 'Embassy attestation'],
-    processingTime: 'Varies by university and state — confirmed before you pay',
+    processingTime: 'Varies by university and state, confirmed before you pay',
     priceOnRequest: true,
     order: 3,
   },
@@ -303,7 +303,7 @@ export const courses = [
       'Document a model so someone else can pick it up',
     ],
     modules: [
-      { title: 'Model architecture', detail: 'Inputs, calculations, outputs — kept apart.' },
+      { title: 'Model architecture', detail: 'Inputs, calculations, outputs, kept apart.' },
       { title: 'Core formulas', detail: 'Lookups, dynamic arrays, error handling.' },
       { title: 'Three-statement build', detail: 'P&L, balance sheet, cash flow and the circularity problem.' },
       { title: 'Scenarios', detail: 'Switches, data tables and presenting a range.' },
@@ -365,14 +365,14 @@ export const educationPrograms = [
     level: 'Postgraduate',
     field: 'Business & Management',
     destinations: ['United Kingdom', 'Germany', 'Canada', 'Australia', 'UAE'],
-    duration: '1–2 years',
+    duration: '1 to 2 years',
     intakes: ['January', 'September'],
     summary: 'General management degree for professionals moving toward leadership roles.',
     description:
       'An MBA suits candidates with a few years of work experience who want to move from doing the work to running it. We help you judge whether the degree is worth the cost in your case, shortlist institutions against your budget and target market, and build an application that explains your trajectory rather than just listing it.',
     entryRequirements: [
       'Bachelor degree in any discipline',
-      'Work experience — most competitive programmes expect two years or more',
+      'Work experience, most competitive programmes expect two years or more',
       'English language test, where required by the institution',
     ],
     supportIncluded: [
@@ -387,14 +387,14 @@ export const educationPrograms = [
     level: 'Postgraduate',
     field: 'Technology',
     destinations: ['United Kingdom', 'Germany', 'Ireland', 'Canada'],
-    duration: '1–2 years',
+    duration: '1 to 2 years',
     intakes: ['January', 'September'],
     summary: 'Postgraduate computing for graduates moving into specialist technical work.',
     description:
       'Suitable for computing graduates and for career changers with a strong quantitative background, though conversion routes differ by country. We map the entry requirements honestly before you apply, so you do not spend application fees on programmes you are not eligible for.',
     entryRequirements: [
       'Bachelor degree in computer science or a related quantitative field',
-      'Programming background — some programmes test this',
+      'Programming background, some programmes test this',
       'English language test, where required',
     ],
     supportIncluded: [
@@ -409,11 +409,11 @@ export const educationPrograms = [
     level: 'Postgraduate',
     field: 'Data & Analytics',
     destinations: ['United Kingdom', 'Germany', 'Netherlands', 'Australia'],
-    duration: '1–2 years',
+    duration: '1 to 2 years',
     intakes: ['September'],
     summary: 'Statistics, machine learning and applied analysis for data careers.',
     description:
-      'A strong route into analytics and machine-learning roles. Entry requirements vary widely — some programmes expect a mathematics or statistics background, others accept business graduates with evidence of quantitative work.',
+      'A strong route into analytics and machine-learning roles. Entry requirements vary widely, some programmes expect a mathematics or statistics background, others accept business graduates with evidence of quantitative work.',
     entryRequirements: [
       'Bachelor degree with demonstrable quantitative content',
       'Mathematics or statistics coursework, depending on the institution',
@@ -426,7 +426,7 @@ export const educationPrograms = [
     level: 'Undergraduate',
     field: 'Business & Management',
     destinations: ['UAE', 'United Kingdom', 'Canada', 'Malaysia'],
-    duration: '3–4 years',
+    duration: '3 to 4 years',
     intakes: ['January', 'September'],
     summary: 'Undergraduate business degree with international study options.',
     description:
@@ -439,7 +439,7 @@ export const educationPrograms = [
     level: 'Postgraduate',
     field: 'Healthcare',
     destinations: ['United Kingdom', 'Ireland', 'Australia'],
-    duration: '1–2 years',
+    duration: '1 to 2 years',
     intakes: ['January', 'September'],
     summary: 'Postgraduate healthcare study with registration pathways to consider alongside.',
     description:
@@ -471,18 +471,18 @@ export const faqs = [
   { category: 'Career Services', order: 3, question: 'What if I do not like the first draft?', answer: 'Every CV bundle includes one month of unlimited revisions. Tell us what is wrong and we rewrite it.' },
   { category: 'Career Services', order: 4, question: 'Do you guarantee a job?', answer: 'No, and you should be careful of anyone who does. Hiring decisions depend on the market, the employer and the interview. We can make sure your application is strong and gets seen.' },
   { category: 'Career Services', order: 5, question: 'Do you write cover letters for every application?', answer: 'The bundles include one customised cover letter built around your target role. It is written so you can adapt it per application, and we show you how.' },
-  { category: 'Pricing & Payments', order: 1, question: 'How is CV pricing decided?', answer: 'By your years of experience, because a fifteen-year career takes longer to research and position than a first job. The four bands are ₹599 for 0–3 years, ₹899 for 4–7 years, ₹1,199 for 8–14 years and ₹1,799 for 15 or more.' },
-  { category: 'Pricing & Payments', order: 2, question: 'Are there any hidden charges?', answer: 'No. The price shown for a CV bundle is the full price. Where a service is quoted on request — documentation and attestation, for example — you get a written quote before any work begins.' },
+  { category: 'Pricing & Payments', order: 1, question: 'How is CV pricing decided?', answer: 'By your years of experience, because a fifteen-year career takes longer to research and position than a first job. The four bands are ₹599 for 0 to 3 years, ₹899 for 4 to 7 years, ₹1,199 for 8 to 14 years and ₹1,799 for 15 or more.' },
+  { category: 'Pricing & Payments', order: 2, question: 'Are there any hidden charges?', answer: 'No. The price shown for a CV bundle is the full price. Where a service is quoted on request, documentation and attestation, for example, you get a written quote before any work begins.' },
   { category: 'Pricing & Payments', order: 3, question: 'Can I upgrade after ordering?', answer: 'Yes. If your experience band was misjudged, we adjust it and you pay only the difference.' },
   { category: 'Education', order: 1, question: 'Do you charge students for education counselling?', answer: 'The first counselling session is free. Where a paid service applies, we set out the fee in writing before you commit.' },
   { category: 'Education', order: 2, question: 'Can you guarantee admission or a visa?', answer: 'No. Admission is the institution\'s decision and a visa is the government\'s. What we can do is make sure the application is complete, accurate and submitted on time.' },
   { category: 'Education', order: 3, question: 'How early should I start?', answer: 'For a September intake, start around twelve months ahead. Tests, transcripts, attestation and financial documentation each take longer than people expect.' },
   { category: 'UAE & Global Mobility', order: 1, question: 'What is in the UAE job seeker package?', answer: 'Support for a UAE job search from outside the country: a CV rewritten for the Gulf market, CV distribution, interview preparation, and practical relocation guidance covering visas, accommodation and arrival essentials.' },
-  { category: 'UAE & Global Mobility', order: 2, question: 'Do I need my certificates attested for the UAE?', answer: 'In most cases, yes. Employment and family visas usually require attested educational and personal documents. Start this early — it is the step that most often delays a move.' },
+  { category: 'UAE & Global Mobility', order: 2, question: 'Do I need my certificates attested for the UAE?', answer: 'In most cases, yes. Employment and family visas usually require attested educational and personal documents. Start this early, it is the step that most often delays a move.' },
   { category: 'UAE & Global Mobility', order: 3, question: 'Can you get me a UAE work visa?', answer: 'A work visa is sponsored by the employer who hires you. We prepare you and your documents so that nothing on your side holds the process up.' },
-  { category: 'Documentation', order: 1, question: 'What is the difference between apostille and attestation?', answer: 'An apostille is a single certificate recognised by countries that signed the Hague Convention. Countries outside it, including the UAE, require attestation — a chain of stamps ending at that country\'s embassy. Which one you need depends entirely on the destination.' },
+  { category: 'Documentation', order: 1, question: 'What is the difference between apostille and attestation?', answer: 'An apostille is a single certificate recognised by countries that signed the Hague Convention. Countries outside it, including the UAE, require attestation, a chain of stamps ending at that country\'s embassy. Which one you need depends entirely on the destination.' },
   { category: 'Documentation', order: 2, question: 'How long does attestation take?', answer: 'It depends on the issuing state, the university and the embassy involved. We confirm a realistic timeline for your specific documents before you pay, rather than quoting an average.' },
-  { category: 'Documentation', order: 3, question: 'Do you need my original certificates?', answer: 'Usually yes — most authorities stamp the original document. We tell you exactly what is needed at the quote stage and track the documents while they are with us.' },
+  { category: 'Documentation', order: 3, question: 'Do you need my original certificates?', answer: 'Usually yes, most authorities stamp the original document. We tell you exactly what is needed at the quote stage and track the documents while they are with us.' },
   { category: 'Jobs & Applications', order: 1, question: 'Does it cost anything to apply for a job here?', answer: 'No. Searching and applying for jobs on DutyLaunch is free for candidates.' },
   { category: 'Jobs & Applications', order: 2, question: 'Can I track my applications?', answer: 'Yes. Every application appears in your dashboard with its current status, and you are notified when an employer moves it forward.' },
   { category: 'Jobs & Applications', order: 3, question: 'How do employers post a job?', answer: 'Create an employer account, complete your company profile and post from the employer dashboard. New listings are reviewed before they go live.' },
@@ -495,11 +495,11 @@ export const blogPosts = [
     tags: ['ats', 'cv', 'job search'],
     isFeatured: true,
     excerpt: 'Most applications are filtered by software first. Here is what that software can and cannot read, and how to write for both audiences at once.',
-    content: `Most mid-size and large employers run applications through an applicant tracking system before anyone opens them. The system parses your document into fields — name, employer, dates, titles, skills — and stores it as structured data. If it cannot parse a field, that field is empty. An empty field is not a neutral result; it is a missing qualification.
+    content: `Most mid-size and large employers run applications through an applicant tracking system before anyone opens them. The system parses your document into fields, name, employer, dates, titles, skills, and stores it as structured data. If it cannot parse a field, that field is empty. An empty field is not a neutral result; it is a missing qualification.
 
 ## What breaks parsing
 
-Two-column layouts are the most common problem. A human reads the left column then the right; a parser often reads straight across, interleaving your job titles with your skills list. Text inside images and graphics is invisible. Headers and footers are frequently skipped entirely, which is unfortunate if that is where your phone number lives. Unusual section headings — "My Journey" instead of "Experience" — get classified as unknown.
+Two-column layouts are the most common problem. A human reads the left column then the right; a parser often reads straight across, interleaving your job titles with your skills list. Text inside images and graphics is invisible. Headers and footers are frequently skipped entirely, which is unfortunate if that is where your phone number lives. Unusual section headings, "My Journey" instead of "Experience" Get classified as unknown.
 
 ## What to do instead
 
@@ -513,7 +513,7 @@ Every bullet should answer one of three questions: what did you change, by how m
 
 ## Matching the vocabulary
 
-Read three advertisements for the role you want. Note the nouns they repeat. If they all say "stakeholder management" and your CV says "dealing with clients", you are describing the same skill in a word the system is not looking for. This is not keyword stuffing — it is using the industry's own vocabulary for something you genuinely did.`,
+Read three advertisements for the role you want. Note the nouns they repeat. If they all say "stakeholder management" and your CV says "dealing with clients", you are describing the same skill in a word the system is not looking for. This is not keyword stuffing, it is using the industry's own vocabulary for something you genuinely did.`,
   },
   {
     title: 'The interview answer that fixes most of the others',
@@ -526,7 +526,7 @@ Read three advertisements for the role you want. Note the nouns they repeat. If 
 
 It means: why are you in this room, and why should the next forty minutes be interesting? A good answer is about ninety seconds, has three parts, and ends somewhere useful.
 
-**Where you are now.** One sentence on your current role and scope. Not your title alone — what you are responsible for.
+**Where you are now.** One sentence on your current role and scope. Not your title alone, what you are responsible for.
 
 **How you got here, selectively.** Two or three sentences covering only the steps that explain your fit for this job. A career change is a feature here, not something to apologise for, as long as you say what it gave you.
 
@@ -534,7 +534,7 @@ It means: why are you in this room, and why should the next forty minutes be int
 
 ## The second benefit
 
-A well-constructed answer plants the follow-up questions. If you mention that you rebuilt a reporting process, a good interviewer will ask about it — and you have now steered the interview toward material you know cold. The alternative is letting them pick, which means answering questions about the weakest parts of your CV.
+A well-constructed answer plants the follow-up questions. If you mention that you rebuilt a reporting process, a good interviewer will ask about it, and you have now steered the interview toward material you know cold. The alternative is letting them pick, which means answering questions about the weakest parts of your CV.
 
 ## Practise out loud
 
@@ -553,7 +553,7 @@ The Hague Apostille Convention lets member countries accept each other's documen
 
 ## Attestation
 
-Countries outside the Convention — including the UAE and most of the Gulf — require a chain. Typically: notary or state-level verification, then MEA attestation, then attestation by that country's embassy. Each step depends on the one before it, so an error early on is discovered late.
+Countries outside the Convention, including the UAE and most of the Gulf, require a chain. Typically: notary or state-level verification, then MEA attestation, then attestation by that country's embassy. Each step depends on the one before it, so an error early on is discovered late.
 
 ## What decides it
 
@@ -572,7 +572,7 @@ Attestation is the most common reason a confirmed job offer or admission slips. 
     category: 'UAE & Gulf Careers',
     tags: ['uae', 'dubai', 'job search', 'relocation'],
     excerpt: 'The market rewards preparation over volume. What to have ready before you start applying.',
-    content: `Applying into the UAE from abroad is a different exercise from applying at home. Employers are weighing an extra set of risks — visa sponsorship, notice periods, whether you will actually relocate — and your application has to answer those questions before they are asked.
+    content: `Applying into the UAE from abroad is a different exercise from applying at home. Employers are weighing an extra set of risks, visa sponsorship, notice periods, whether you will actually relocate, and your application has to answer those questions before they are asked.
 
 ## Your CV needs to be re-pitched, not just reformatted
 
@@ -582,7 +582,7 @@ Where your experience is in a different regulatory or market context, translate 
 
 ## Be specific about availability
 
-"Immediately available" from another country is not credible unless you explain how. Give a realistic date and the reason it is realistic — notice served, documents already attested, willing to travel for interview at your own cost.
+"Immediately available" from another country is not credible unless you explain how. Give a realistic date and the reason it is realistic, notice served, documents already attested, willing to travel for interview at your own cost.
 
 ## Documents before offers
 
@@ -605,7 +605,7 @@ A job-search trip works when it is booked around confirmed conversations, not as
 
 ## What job does this unlock?
 
-Not "what field does this relate to" — what specific advertisements could you answer after finishing that you cannot answer now? Go and read those advertisements. If the course content does not match what they ask for, the certificate will not close the gap.
+Not "what field does this relate to" What specific advertisements could you answer after finishing that you cannot answer now? Go and read those advertisements. If the course content does not match what they ask for, the certificate will not close the gap.
 
 ## What will you have built?
 
@@ -626,7 +626,7 @@ In those situations, choose on outcome and assessment quality rather than price 
     category: 'Career Advice',
     tags: ['job search', 'planning'],
     excerpt: 'A structure for the search, so effort goes where it compounds instead of where it feels productive.',
-    content: `Job searching rewards structure, and most people have none. The default pattern — open a portal, apply to whatever appears, repeat — feels like effort and produces very little. Here is a sequence that works better.
+    content: `Job searching rewards structure, and most people have none. The default pattern, open a portal, apply to whatever appears, repeat, feels like effort and produces very little. Here is a sequence that works better.
 
 ## Weeks one and two: decide what you are looking for
 
@@ -646,7 +646,7 @@ At the same time, start conversations that are not applications: former colleagu
 
 Look at your numbers. Applications that produced no response at all point at the CV or the targeting. Interviews that produced no offers point at interview preparation. First-round rejections and final-round rejections are different problems with different fixes.
 
-If nothing is moving, change one variable at a time — the targeting, the documents, or the channel — and give each change enough applications to tell you something.`,
+If nothing is moving, change one variable at a time, the targeting, the documents, or the channel, and give each change enough applications to tell you something.`,
   },
 ];
 
@@ -663,7 +663,7 @@ export const demoJobs = [
     salary: { min: 900000, max: 1400000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['SQL', 'Excel', 'Power BI', 'Stakeholder management'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. A business analyst role working with commercial teams to define reporting requirements and deliver analysis.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. A business analyst role working with commercial teams to define reporting requirements and deliver analysis.',
     responsibilities: ['Gather and document requirements', 'Build and maintain reporting', 'Present findings to commercial stakeholders'],
     requirements: ['2+ years in an analyst role', 'Strong SQL', 'Comfortable presenting to non-technical audiences'],
     status: 'published',
@@ -681,7 +681,7 @@ export const demoJobs = [
     salary: { min: 12000, max: 16000, currency: 'AED', period: 'month', disclosed: true },
     skills: ['Paid social', 'Google Ads', 'Analytics', 'Copywriting'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Campaign planning and execution across paid and organic channels for a regional brand.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Campaign planning and execution across paid and organic channels for a regional brand.',
     responsibilities: ['Plan and run paid campaigns', 'Own channel reporting', 'Work with agency partners'],
     requirements: ['3+ years in performance marketing', 'Hands-on with major ad platforms', 'GCC market experience preferred'],
     status: 'published',
@@ -698,7 +698,7 @@ export const demoJobs = [
     salary: { disclosed: false, currency: 'AED', period: 'month' },
     skills: ['Patient care', 'Clinical documentation'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Ward-based nursing role with licensing support for overseas candidates.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Ward-based nursing role with licensing support for overseas candidates.',
     responsibilities: ['Deliver patient care to protocol', 'Maintain clinical records'],
     requirements: ['Nursing degree', 'Home-country registration', 'Attested certificates'],
     status: 'published',
@@ -706,7 +706,7 @@ export const demoJobs = [
   {
     title: '[DEMO] Software Engineer (Backend)',
     company: 'Sample Tech Labs',
-    location: 'Remote — India',
+    location: 'Remote: India',
     country: 'India',
     category: 'Technology',
     jobType: 'Remote',
@@ -715,7 +715,7 @@ export const demoJobs = [
     salary: { min: 1800000, max: 2800000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['Node.js', 'MongoDB', 'REST APIs', 'AWS'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Backend engineering on a distributed services platform.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Backend engineering on a distributed services platform.',
     responsibilities: ['Design and ship backend services', 'Own reliability of your services', 'Review peers\' code'],
     requirements: ['3+ years backend experience', 'Strong Node.js and database fundamentals'],
     status: 'published',
@@ -733,7 +733,7 @@ export const demoJobs = [
     salary: { min: 1200000, max: 1900000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['HRBP', 'Performance management', 'Employee relations', 'HRIS'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. HRBP role partnering with engineering and product leadership on hiring, performance cycles and retention.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. HRBP role partnering with engineering and product leadership on hiring, performance cycles and retention.',
     responsibilities: ['Partner with department heads on people plans', 'Run performance review cycles', 'Own employee relations casework'],
     requirements: ['4+ years as an HRBP or generalist', 'Comfortable advising senior stakeholders'],
     status: 'published',
@@ -750,7 +750,7 @@ export const demoJobs = [
     salary: { min: 7000, max: 10000, currency: 'AED', period: 'month', disclosed: true },
     skills: ['Freight coordination', 'ERP systems', 'Vendor management'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Coordinating inbound and outbound freight for a regional distribution business.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Coordinating inbound and outbound freight for a regional distribution business.',
     responsibilities: ['Track shipments end to end', 'Liaise with freight forwarders and customs agents', 'Maintain inventory accuracy in the ERP'],
     requirements: ['1+ years in logistics or supply chain', 'Working knowledge of an ERP system'],
     status: 'published',
@@ -767,7 +767,7 @@ export const demoJobs = [
     salary: { min: 600000, max: 900000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['Store operations', 'Team leadership', 'Inventory management', 'P&L ownership'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Running day-to-day operations for a high-footfall retail location.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Running day-to-day operations for a high-footfall retail location.',
     responsibilities: ['Own store P&L and shrinkage targets', 'Hire, train and roster store staff', 'Drive footfall-to-conversion initiatives'],
     requirements: ['3+ years managing a retail team', 'Comfortable owning store-level P&L'],
     status: 'published',
@@ -784,7 +784,7 @@ export const demoJobs = [
     salary: { min: 1400000, max: 2200000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['Market analysis', 'Client presentations', 'Financial modelling'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Client-facing consulting role across strategy and operations engagements.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Client-facing consulting role across strategy and operations engagements.',
     responsibilities: ['Build client-ready analysis and models', 'Support engagement leads on delivery', 'Present findings directly to client stakeholders'],
     requirements: ['2+ years in consulting or a related analytical role', 'Strong Excel and presentation skills'],
     status: 'published',
@@ -802,7 +802,7 @@ export const demoJobs = [
     salary: { min: 8000, max: 11000, currency: 'AED', period: 'month', disclosed: true },
     skills: ['Guest relations', 'PMS systems', 'Team scheduling'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Leading the front-office team at a mid-size hotel property.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Leading the front-office team at a mid-size hotel property.',
     responsibilities: ['Manage front-desk rostering and standards', 'Resolve escalated guest issues', 'Report occupancy and revenue metrics upward'],
     requirements: ['3+ years in hotel front-office operations', 'Experience with a property management system'],
     status: 'published',
@@ -810,7 +810,7 @@ export const demoJobs = [
   {
     title: '[DEMO] QA Automation Engineer',
     company: 'NovaCore Systems',
-    location: 'Remote — India',
+    location: 'Remote: India',
     country: 'India',
     category: 'Technology',
     jobType: 'Remote',
@@ -819,7 +819,7 @@ export const demoJobs = [
     salary: { min: 1000000, max: 1600000, currency: 'INR', period: 'year', disclosed: true },
     skills: ['Playwright', 'CI/CD', 'API testing', 'JavaScript'],
     description:
-      'DEMO RECORD — seeded for development only. Replace with real listings before launch. Building and maintaining automated test suites across a web platform.',
+      'DEMO RECORD, seeded for development only. Replace with real listings before launch. Building and maintaining automated test suites across a web platform.',
     responsibilities: ['Write and maintain end-to-end test suites', 'Wire tests into CI/CD', 'Triage flaky tests and pipeline failures'],
     requirements: ['2+ years in test automation', 'Comfortable in a CI/CD pipeline'],
     status: 'published',

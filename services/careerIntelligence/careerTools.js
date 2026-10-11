@@ -111,7 +111,7 @@ function buildLinkedInFallback(resume, profile) {
       'Use a current professional photo and a background image.',
       'Set your location to the market you are targeting.',
       'Turn on "Open to work" privately if you are searching while employed.',
-      'Add your top skills in order — the first three carry the most weight in search.',
+      'Add your top skills in order, the first three carry the most weight in search.',
     ],
     consistencyNote:
       'Built from the same career profile as your resume, so the two stay consistent.',
@@ -239,7 +239,7 @@ export function buildCoverLetterFallback(resume, { profile, jobIntel, keywordRes
   const previous = roles[1];
   const previousBullet = bulletsOf(previous).map(strip)[0];
   const second = evidenced.length
-    ? `The role calls for ${joinList(evidenced)}, which are areas my resume already demonstrates${previous && previousBullet ? ` — for example, as ${previous.title}${previous.company ? ` at ${previous.company}` : ''}, I ${lower(previousBullet)}` : ''}.`
+    ? `The role calls for ${joinList(evidenced)}, which are areas my resume already demonstrates${previous && previousBullet ? ` For example, as ${previous.title}${previous.company ? ` at ${previous.company}` : ''}, I ${lower(previousBullet)}` : ''}.`
     : previous && previousBullet
       ? `Before that, as ${previous.title}${previous.company ? ` at ${previous.company}` : ''}, I ${lower(previousBullet)}.`
       : '';
@@ -253,7 +253,7 @@ export function buildCoverLetterFallback(resume, { profile, jobIntel, keywordRes
     salutation: hiringManager ? `Dear ${hiringManager},` : 'Dear Hiring Manager,',
     body: [opening, middle, second, close].filter(Boolean).join('\n\n'),
     closing: 'Yours sincerely,',
-    subjectLine: `Application: ${jobTitle}${companyName ? ` — ${companyName}` : ''}`,
+    subjectLine: `Application: ${jobTitle}${companyName ? `, ${companyName}` : ''}`,
     candidateName: resume.personal?.name || '',
     note: 'This letter references only your own resume and the job description. No claims are made about the employer.',
   };
@@ -291,7 +291,7 @@ export async function generateInterviewPrep(resume, { profile, jobIntel, keyword
     '}',
     '',
     '4 to 6 items per category; leave "technical" and "leadership" empty arrays where they do not apply to this role.',
-    'For STAR guidance, point at the candidate\'s OWN experience from the facts above — name the actual role — rather than describing a generic situation. Never invent an example they did not give you.',
+    'For STAR guidance, point at the candidate\'s OWN experience from the facts above, name the actual role, rather than describing a generic situation. Never invent an example they did not give you.',
   ].join('\n');
 
   let generated = {};

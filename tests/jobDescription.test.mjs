@@ -35,7 +35,7 @@ test('writes a job description and keeps the given title', async () => {
   assert.equal(out.jobTitle, 'Full Stack Web Developer');
   assert.match(out.description, /Required skills/);
   const prompt = lastBody.messages.map((m) => m.content).join('\n');
-  assert.match(prompt, /entry level \(0–2 years\)/);
+  assert.match(prompt, /entry level \(0 to 2 years\)/);
   assert.match(prompt, /Do not copy the candidate's skill list/);
   assert.match(prompt, /MERN Stack Developer/, 'the prompt includes the LinkedIn profile');
 });
@@ -44,7 +44,7 @@ test('picks a job title from the profile when none is given', async () => {
   fakeAi(JSON.stringify({ jobTitle: 'MERN Stack Developer', description: DESCRIPTION }));
   const out = await generateJobDescription(resume, {});
   assert.equal(out.jobTitle, 'MERN Stack Developer');
-  assert.match(lastBody.messages.map((m) => m.content).join('\n'), /not given — choose from the candidate facts/);
+  assert.match(lastBody.messages.map((m) => m.content).join('\n'), /not given, choose from the candidate facts/);
 });
 
 test('rejects a too-short or broken reply instead of filling junk', async () => {

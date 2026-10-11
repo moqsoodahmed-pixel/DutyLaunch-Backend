@@ -20,12 +20,12 @@ export const companyProfile = {
     whatsapp: '+91 85488 54826',
     address: 'Plazzo Retail Mall, Ibrahim Sahib St, Bharati Nagar, Shivaji Nagar, Bengaluru, Karnataka 560001',
     mapUrl: 'https://www.google.com/maps/place/DutyLaunch/@12.983623,77.6094233,17z/data=!4m6!3m5!1s0x3bae17cc3757987d:0xfba9cd46257832ef!8m2!3d12.983623!4d77.6094233!16s%2Fg%2F11p19s05hm',
-    hours: 'Monday to Saturday, 10:00 – 19:00 IST',
+    hours: 'Monday to Saturday, 10:00 to 19:00 IST',
   },
   pillars: [
     {
       label: 'Career',
-      summary: 'Profile, applications and interviews — the work that gets you shortlisted.',
+      summary: 'Profile, applications and interviews, the work that gets you shortlisted.',
       items: ['Career services (CV, cover letter, LinkedIn, interviews)', 'CV pricing bundles', 'Career counselling', 'Job search assistance'],
     },
     {
@@ -45,7 +45,7 @@ export const companyProfile = {
     },
     {
       label: 'Jobs',
-      summary: 'Search, apply and track — free for candidates.',
+      summary: 'Search, apply and track, free for candidates.',
       items: ['Browse jobs', 'Apply & track applications', 'Employer job posting'],
     },
     {

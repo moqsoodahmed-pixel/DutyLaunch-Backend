@@ -249,7 +249,7 @@ function scoreAchievementStrength(resume, profile) {
             : [{
                 label: 'Your projects could show scale or outcome',
                 severity: 'medium',
-                detail: 'Users reached, accuracy achieved, time saved — a number makes a student project concrete.',
+                detail: 'Users reached, accuracy achieved, time saved, a number makes a student project concrete.',
               }]
           : [{
               label: 'Add projects, coursework or internships',
@@ -283,7 +283,7 @@ function scoreAchievementStrength(resume, profile) {
     findings.push({
       label: 'Few bullets carry a number',
       severity: 'medium',
-      detail: `${quantified} of ${bullets.length} bullets are quantified. Scale, volume, frequency and time all count — not just percentages.`,
+      detail: `${quantified} of ${bullets.length} bullets are quantified. Scale, volume, frequency and time all count, not just percentages.`,
     });
   }
   if (resultRatio < 0.3) {
@@ -468,13 +468,13 @@ function scoreExperienceRelevance(resume, jobIntel, profile) {
   const score = clamp((overlapRatio * 40 + titleHit * 30 + yearsFit * 30));
 
   if (overlapRatio < 0.25) {
-    findings.push({ label: 'Your bullets and the job responsibilities share little vocabulary', severity: 'medium', detail: 'The work may well be the same — the wording is not.' });
+    findings.push({ label: 'Your bullets and the job responsibilities share little vocabulary', severity: 'medium', detail: 'The work may well be the same, the wording is not.' });
   }
   if (req && profile && profile.yearsOfExperience < req.min) {
     findings.push({
       label: `The role asks for ${req.min}+ years; your resume shows about ${profile.yearsOfExperience}`,
       severity: 'medium',
-      detail: 'Worth applying anyway when the rest is a strong fit — but lead with the evidence that offsets it.',
+      detail: 'Worth applying anyway when the rest is a strong fit, but lead with the evidence that offsets it.',
     });
   }
 

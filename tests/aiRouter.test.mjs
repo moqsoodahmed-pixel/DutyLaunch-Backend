@@ -378,7 +378,10 @@ test('Gemini: uses the native API with the key in the x-goog-api-key header (wor
   assert.ok(!c.url.includes('AQ.test_key_value') && !c.url.includes('key='), 'the key is never put in the URL');
   assert.equal(c.headers['x-goog-api-key'], 'AQ.test_key_value');
   assert.equal(c.headers.Authorization, undefined);
-  assert.deepEqual(c.body.systemInstruction, { parts: [{ text: 'rules' }] });
+  // The shared house-style rule (no em or en dashes) is appended to the system text.
+  assert.equal(c.body.systemInstruction.parts.length, 1);
+  assert.ok(c.body.systemInstruction.parts[0].text.startsWith('rules'));
+  assert.match(c.body.systemInstruction.parts[0].text, /Never use em dashes or en dashes/);
   assert.deepEqual(c.body.contents, [{ role: 'user', parts: [{ text: 'Return JSON.' }] }]);
   assert.equal(c.body.generationConfig.maxOutputTokens, 2500);
   assert.equal(c.body.generationConfig.temperature, 0.3);

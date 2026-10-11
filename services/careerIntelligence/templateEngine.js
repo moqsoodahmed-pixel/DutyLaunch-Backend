@@ -274,7 +274,7 @@ function dateRange(role) {
   const start = formatDate(role.startDate);
   const end = role.current ? 'Present' : formatDate(role.endDate);
   if (!start && !end) return '';
-  return [start, end].filter(Boolean).join(' – ');
+  return [start, end].filter(Boolean).join(', ');
 }
 
 const SECTION_TITLES = {
@@ -344,7 +344,7 @@ function renderEducation(resume) {
   return items
     .map((e) => {
       const line = [e.degree, e.field].filter(Boolean).join(', ');
-      const dates = [formatDate(e.startDate), formatDate(e.endDate)].filter(Boolean).join(' – ');
+      const dates = [formatDate(e.startDate), formatDate(e.endDate)].filter(Boolean).join(', ');
       return `<article class="entry">
   <div class="entry-head">
     <div class="entry-main">
@@ -386,7 +386,7 @@ function renderCertifications(resume) {
   return `<ul>${items
     .map((c) => {
       const meta = [c.issuer, formatDate(c.issueDate)].filter(Boolean).join(', ');
-      return `<li>${esc(c.name)}${meta ? ` <span class="entry-meta">— ${esc(meta)}</span>` : ''}</li>`;
+      return `<li>${esc(c.name)}${meta ? ` <span class="entry-meta">, ${esc(meta)}</span>` : ''}</li>`;
     })
     .join('')}</ul>`;
 }
@@ -396,7 +396,7 @@ function renderProjects(resume) {
   if (!items.length) return '';
   return items
     .map((p) => {
-      const dates = [formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(' – ');
+      const dates = [formatDate(p.startDate), formatDate(p.endDate)].filter(Boolean).join(', ');
       return `<article class="entry">
   <div class="entry-head">
     <div class="entry-main">
@@ -604,7 +604,7 @@ ${sections}
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(p.name || 'Resume')} — Resume</title>
+<title>${esc(p.name || 'Resume')}, Resume</title>
 <style>${stylesheet(template.tokens)}</style>
 </head>
 <body>

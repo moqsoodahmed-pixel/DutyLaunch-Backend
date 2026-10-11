@@ -85,7 +85,7 @@ export const DEFAULT_CONFIG = {
       label: 'United Arab Emirates',
       photo: 'commonly included',
       lengthNote: 'Two pages is widely accepted.',
-      contactNote: 'Candidates commonly include nationality and visa status. Both are optional — include them only if you choose to.',
+      contactNote: 'Candidates commonly include nationality and visa status. Both are optional, include them only if you choose to.',
       dateFormat: 'DD/MM/YYYY',
       spelling: 'British',
     },
@@ -186,8 +186,8 @@ export function countryGuidance(country, config = DEFAULT_CONFIG) {
 
 /** The weight sets an admin may change, with the keys each must contain. */
 export const EDITABLE_WEIGHT_SETS = [
-  { path: ['health', 'weightsWithJd'], label: 'Resume Health — with a job description' },
-  { path: ['health', 'weightsWithoutJd'], label: 'Resume Health — without a job description' },
+  { path: ['health', 'weightsWithJd'], label: 'Resume Health, with a job description' },
+  { path: ['health', 'weightsWithoutJd'], label: 'Resume Health, without a job description' },
   { path: ['match', 'weights'], label: 'Job Match' },
 ];
 

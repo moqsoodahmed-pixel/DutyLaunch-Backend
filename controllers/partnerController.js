@@ -40,7 +40,7 @@ export const upsertMine = asyncHandler(async (req, res) => {
     const created = await PartnerInstitute.create({ ...updates, owner: req.user._id, status: 'pending' });
     return sendSuccess(res, {
       statusCode: 201,
-      message: 'Profile submitted — our team will review it shortly',
+      message: 'Profile submitted, our team will review it shortly',
       data: created,
     });
   }

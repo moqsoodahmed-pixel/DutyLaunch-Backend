@@ -245,15 +245,15 @@ export function analyzeResumeText(text) {
   const score   = clamp(Object.entries(weights).reduce((s, [k, w]) => s + categoryScores[k] * w, 0));
 
   const strengths = [], weaknesses = [], recommendations = [];
-  if (hasEmail && hasPhone) strengths.push('Strong contact information — email and phone are both present.');
+  if (hasEmail && hasPhone) strengths.push('Strong contact information, email and phone are both present.');
   else weaknesses.push('Missing key contact details.');
   if (!hasEmail)    recommendations.push('Add a professional email address near the top of your resume.');
   if (!hasPhone)    recommendations.push('Include a phone number so recruiters can reach you directly.');
   if (!hasLinkedin) recommendations.push('Add your LinkedIn profile URL to strengthen your contact section.');
   if (clamp(fmtScore) >= 80) strengths.push('Clean, ATS-friendly formatting with a well-balanced resume length.');
   else { weaknesses.push('Formatting may be difficult for ATS software to parse.'); recommendations.push('Reduce excessive formatting (tables, columns, graphics) that ATS parsers struggle with.'); }
-  if (words.length < 250) recommendations.push('Your resume looks short — add more detail on your experience and impact.');
-  if (words.length > 1200) recommendations.push('Your resume is quite long — tighten it to the most relevant achievements.');
+  if (words.length < 250) recommendations.push('Your resume looks short, add more detail on your experience and impact.');
+  if (words.length > 1200) recommendations.push('Your resume is quite long, tighten it to the most relevant achievements.');
   if (kwScore >= 70) strengths.push('Good keyword coverage across common industry and technical terms.');
   else { weaknesses.push('Limited keyword alignment.'); recommendations.push('Add more role-relevant keywords that match your target job descriptions.'); }
   if (sectionFound.experience) strengths.push('Clear, labeled work experience section.');

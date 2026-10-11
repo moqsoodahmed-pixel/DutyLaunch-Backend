@@ -25,7 +25,7 @@ import { countryGuidance } from './scoringConfig.js';
  * Output rules — one source of truth, sent with every request
  * ------------------------------------------------------------------ */
 
-const OUTPUT_RULES = `HARD RULES — a response that breaks any of these is rejected:
+const OUTPUT_RULES = `HARD RULES, a response that breaks any of these is rejected:
 1. Never introduce a fact that is not in CANDIDATE FACTS. No employers, titles, dates, degrees, certifications, tools, clients, team sizes, revenue figures, percentages or any other number.
 2. If the original bullet contains no number, the rewrite contains no number. Do not estimate, round, or imply scale that was not stated.
 3. Never change an employer name, job title, or date. You may improve how a responsibility is described underneath them.
@@ -66,7 +66,7 @@ function requireContext(context) {
   if (!context.seniority) missing.push('TARGET SENIORITY');
   if (!context.country) missing.push('COUNTRY');
   if (missing.length) {
-    throw new Error(`Rewrite context incomplete — missing ${missing.join(', ')}. See spec §32.`);
+    throw new Error(`Rewrite context incomplete, missing ${missing.join(', ')}. See spec §32.`);
   }
 }
 
@@ -108,7 +108,7 @@ export function buildPrompt(context, task, { summary = false } = {}) {
         context.keywords,
         '',
         '=== TARGET SENIORITY ===',
-        `${context.seniority} — ${context.strategyGuidance || ''}`,
+        `${context.seniority}, ${context.strategyGuidance || ''}`,
         '',
         '=== COUNTRY CONVENTIONS ===',
         `${country.label}. Spelling: ${country.spelling}. ${country.lengthNote}`,
@@ -182,7 +182,7 @@ function buildTargetBlock(jobIntel, resume) {
  * showing it is an invitation to write it in.
  */
 function buildKeywordBlock(keywordResult, resume) {
-  if (!keywordResult) return '(no target job supplied — do not introduce keywords)';
+  if (!keywordResult) return '(no target job supplied, do not introduce keywords)';
 
   const usable = keywordResult.keywords
     .filter((k) => k.status === MATCH.EXACT || k.status === MATCH.RELATED || k.status === MATCH.POSSIBLE)
@@ -191,7 +191,7 @@ function buildKeywordBlock(keywordResult, resume) {
 
   const { budget } = stuffingBudget(resume, usable.map((k) => k.term));
 
-  if (!usable.length) return '(no keywords are currently evidenced — do not introduce any)';
+  if (!usable.length) return '(no keywords are currently evidenced, do not introduce any)';
 
   return [
     `You may align vocabulary towards at most ${budget} of the following, and only where the original already describes that work:`,

@@ -42,7 +42,7 @@ async function resolveItem(itemType, itemId, user) {
   if (itemType === 'template') {
     const tpl = templateInfo(itemId);
     if (!tpl) throw ApiError.badRequest('Unknown template.');
-    if (tpl.free) throw ApiError.badRequest('This template is free — no payment needed.');
+    if (tpl.free) throw ApiError.badRequest('This template is free, no payment needed.');
     const owned = await Payment.exists({ user: user._id, itemType: 'template', itemKey: tpl.id, status: 'paid' });
     if (owned) throw ApiError.badRequest('You already own this template.');
     return { name: `${tpl.name} template`, price: templatePrice(), currency: 'INR', key: tpl.id };

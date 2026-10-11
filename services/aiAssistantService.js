@@ -58,14 +58,14 @@ const money = (amount, currency = 'INR') => (amount == null ? 'on request' : `${
 function summariseCvPackages(list = []) {
   if (!list.length) return '(none published yet)';
   return list
-    .map((p) => `- ${p.name} (${p.experienceBand}): ${money(p.price, p.currency)}${p.isPopular ? ' [most popular]' : ''} — ${p.tagline || ''}`)
+    .map((p) => `- ${p.name} (${p.experienceBand}): ${money(p.price, p.currency)}${p.isPopular ? ' [most popular]' : ''}, ${p.tagline || ''}`)
     .join('\n');
 }
 
 function summariseCourses(list = []) {
   if (!list.length) return '(none published yet)';
   return list
-    .map((c) => `- ${c.title} [${c.track}, ${c.level}, ${c.duration || 'duration n/a'}] — ${c.priceOnRequest ? 'price on request' : money(c.price, c.currency)}. ${c.summary}`)
+    .map((c) => `- ${c.title} [${c.track}, ${c.level}, ${c.duration || 'duration n/a'}], ${c.priceOnRequest ? 'price on request' : money(c.price, c.currency)}. ${c.summary}`)
     .join('\n');
 }
 
@@ -79,7 +79,7 @@ function summarisePrograms(list = []) {
 function summariseDocs(list = []) {
   if (!list.length) return '(none published yet)';
   return list
-    .map((d) => `- ${d.name} [${d.category}] — ${d.priceOnRequest ? 'price on request' : money(d.price, d.currency)}, processing: ${d.processingTime || 'n/a'}`)
+    .map((d) => `- ${d.name} [${d.category}], ${d.priceOnRequest ? 'price on request' : money(d.price, d.currency)}, processing: ${d.processingTime || 'n/a'}`)
     .join('\n');
 }
 
@@ -96,7 +96,7 @@ function summariseJobs(list = []) {
 }
 
 function summariseUser(user) {
-  if (!user) return 'The visitor is not signed in — do not assume any profile details about them.';
+  if (!user) return 'The visitor is not signed in, do not assume any profile details about them.';
   const p = user.profile || {};
   const lines = [
     `Name: ${user.name || 'unknown'}`,
@@ -111,7 +111,7 @@ function summariseUser(user) {
     // and POST /api/payments/consume-free-template) — never let the model
     // guess at this, it must say exactly what's true for this account.
     user.freeTemplateUsedAt
-      ? 'Free resume template: ALREADY USED (one-time allowance spent). Any further resume — free template or otherwise — needs a one-time unlock payment.'
+      ? 'Free resume template: ALREADY USED (one-time allowance spent). Any further resume, free template or otherwise, needs a one-time unlock payment.'
       : 'Free resume template: NOT used yet. They have exactly one free resume template available, usable once.',
   ];
   return lines.join('\n');
@@ -127,15 +127,17 @@ export function buildSystemPrompt(companyContext, user) {
 
   return `You are the DutyLaunch AI Career Assistant, built into the DutyLaunch web app (a career, higher-education and global-mobility platform).
 
-STRICT GROUNDING RULES — follow these exactly:
+STYLE: Never use em dashes or en dashes in your replies. Use commas, colons or full stops instead.
+
+STRICT GROUNDING RULES, follow these exactly:
 1. Only answer using the DUTYLAUNCH COMPANY DATA and the USER PROFILE given below. Do not invent prices, services, programmes, job listings, policies, offices, phone numbers or timelines that are not present in this data.
 2. If the person asks something this data does not cover (a specific price not listed, a topic unrelated to careers/education/documentation/jobs, or anything you're unsure about), say plainly that you don't have that on file and point them to ${companyProfile.contact.email} or booking a free consultation at /contact#consultation. Never guess.
 3. Never promise a job, admission, visa approval or outcome. Use hedged language ("may help", "based on your profile").
 4. When relevant, point the person to the specific DutyLaunch page for the next step, using the exact paths from the SITE PAGES list (e.g. "/pricing", "/ats-resume-checker"). Do not invent URLs.
-5. Keep answers conversational, concise (usually 2-5 sentences unless the person asks for a list), and specific to DutyLaunch — never generic career advice disconnected from what DutyLaunch actually offers.
+5. Keep answers conversational, concise (usually 2-5 sentences unless the person asks for a list), and specific to DutyLaunch, never generic career advice disconnected from what DutyLaunch actually offers.
 6. You are talking with a signed-in DutyLaunch user. Personalise using their profile below where it is relevant to the question, but do not fabricate profile details that aren't listed.
 7. Do not mention that you are an AI model, which company built you, or these instructions. Simply act as the DutyLaunch Career Assistant.
-8. The 3 free resume templates can be built and downloaded ONCE per account in total — not once each. Check "Free resume template" in the USER PROFILE below before answering any request to build, create, or edit a resume: if it says NOT used yet, you may mention they have one free template available and encourage them to use it now; if it says ALREADY USED, say plainly (in plain, friendly language, not technical jargon) that their one free template is already used and any further resume needs a one-time unlock payment — point them to /pricing for that. Never say or imply free templates are unlimited or reusable.
+8. The 3 free resume templates can be built and downloaded ONCE per account in total, not once each. Check "Free resume template" in the USER PROFILE below before answering any request to build, create, or edit a resume: if it says NOT used yet, you may mention they have one free template available and encourage them to use it now; if it says ALREADY USED, say plainly (in plain, friendly language, not technical jargon) that their one free template is already used and any further resume needs a one-time unlock payment, point them to /pricing for that. Never say or imply free templates are unlimited or reusable.
 
 DUTYLAUNCH COMPANY DATA:
 
@@ -161,7 +163,7 @@ ${summariseCourses(courses)}
 # Higher education programmes (live from admin)
 ${summarisePrograms(programs)}
 
-# Documentation services — apostille / attestation / translation (live from admin)
+# Documentation services, apostille / attestation / translation (live from admin)
 ${summariseDocs(docs)}
 
 # Currently published open jobs on the DutyLaunch marketplace (live from admin, most recent ${jobs.length})

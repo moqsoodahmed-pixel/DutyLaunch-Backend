@@ -40,6 +40,14 @@ globalThis.fetch = async (url, opts) => {
   return ok(JSON.stringify({ rewritten: '', changed: false }));
 };
 
+// /api/career/optimize needs a signed-in user: sign a real token and stub the
+// user lookup (there is no database in this test).
+const { User } = await import('../models/User.js');
+const { signToken } = await import('../utils/token.js');
+const fakeUser = { _id: '507f1f77bcf86cd799439011', isActive: true, role: 'user', hasPasswordChangedAfter: () => false };
+User.findById = () => ({ select: async () => fakeUser });
+const AUTH = { Authorization: `Bearer ${signToken({ sub: fakeUser._id })}` };
+
 const app = (await import('../app.js')).default;
 const server = app.listen(0);
 test.after(() => server.close());
@@ -59,7 +67,7 @@ const RESUME = () => ({
 const optimize = async (extra = {}, resume = RESUME()) => {
   const r = await fetch(`http://127.0.0.1:${server.address().port}/api/career/optimize`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...AUTH },
     body: JSON.stringify({ resume, scope: 'all', autoApply: true, ...extra }),
   });
   const body = await r.json();

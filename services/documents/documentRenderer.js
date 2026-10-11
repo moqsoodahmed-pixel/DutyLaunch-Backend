@@ -30,7 +30,7 @@ import {
 
 /* The built-in PDF fonts only cover Windows-1252. Map the common extras
    and replace anything else, rather than printing garbage glyphs. */
-const WINANSI_EXTRA = new Set('€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ');
+const WINANSI_EXTRA = new Set('€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•, ˜™š›œžŸ');
 export function pdfSafe(text = '') {
   return String(text)
     .replace(/₹/g, 'Rs. ')

@@ -54,7 +54,7 @@ async function getDoc(userId, { create = false } = {}) {
 
 async function requireMaster(userId) {
   const doc = await getDoc(userId);
-  if (!doc?.master) throw ApiError.badRequest('Import your LinkedIn PDF or upload your CV first — the Studio works from your confirmed profile.');
+  if (!doc?.master) throw ApiError.badRequest('Import your LinkedIn PDF or upload your CV first, the Studio works from your confirmed profile.');
   return doc;
 }
 
@@ -272,7 +272,7 @@ export const importProfile = asyncHandler(async (req, res) => {
 
   const doc = await getDoc(req.user._id, { create: true });
   let master = imported;
-  let added = addedFromCv.map((a) => `from CV — ${a}`);
+  let added = addedFromCv.map((a) => `from CV, ${a}`);
   if (mode === 'merge' && doc.master) {
     let mergedNew;
     ({ resume: master, added: mergedNew } = mergeResumes(parseResumeJson(doc.master), imported));
@@ -322,7 +322,7 @@ export const setLinkedInUrl = asyncHandler(async (req, res) => {
     data: {
       linkedinUrl: url,
       imported: false,
-      note: 'Saved as a link on your profile. A URL alone does not give DutyLaunch access to your LinkedIn data — upload your LinkedIn PDF to import your details.',
+      note: 'Saved as a link on your profile. A URL alone does not give DutyLaunch access to your LinkedIn data, upload your LinkedIn PDF to import your details.',
     },
   });
 });
@@ -457,7 +457,7 @@ export const suggestJobDescription = asyncHandler(async (req, res) => {
 const TONE_GUIDE = {
   professional: 'professional',
   confident: 'confident and direct, without exaggeration',
-  concise: 'concise — about 180 words',
+  concise: 'concise, about 180 words',
   'entry-level': 'entry-level / fresher: lead with education, projects, internships and skills; never imply employment the candidate does not have',
   experienced: 'experienced professional: lead with the most relevant roles and documented results',
   'career-change': 'career change: connect transferable, documented experience to the new field honestly',
@@ -472,7 +472,7 @@ export const createCoverLetter = asyncHandler(async (req, res) => {
   if (jobDescription.length < 40) jobDescription = '';
   let jobDescriptionSource = 'user';
   if (!jobDescription && !String(jobTitle || '').trim()) {
-    throw ApiError.badRequest('Add the job title, or paste the job description — the letter is tailored to it.');
+    throw ApiError.badRequest('Add the job title, or paste the job description, the letter is tailored to it.');
   }
   // Only a job title: the AI first reads the candidate's saved resume and
   // writes a typical description for that role, then the letter from it.
@@ -496,7 +496,7 @@ export const createCoverLetter = asyncHandler(async (req, res) => {
   const letter = await CoverLetter.create({
     user: req.user._id,
     versionId: ctx.version?._id,
-    title: [jobTitle, company].filter(Boolean).join(' — ') || 'Cover letter',
+    title: [jobTitle, company].filter(Boolean).join(', ') || 'Cover letter',
     company, jobTitle, jobDescription, tone: COVER_LETTER_TONES.includes(tone) ? tone : 'professional',
     generated: content, content, engine: generated.engine === 'rules' ? 'rules' : 'model',
   });
@@ -618,7 +618,7 @@ export const createInterviewSet = asyncHandler(async (req, res) => {
   const result = await generateTop10(ctx.resume, genOpts(ctx, { experienceLevel }));
   const set = await InterviewSession.create({
     user: req.user._id, kind: 'top10', versionId: ctx.version?._id,
-    title: `Top 10 — ${jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || 'target role'}`.slice(0, 160),
+    title: `Top 10 to ${jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || 'target role'}`.slice(0, 160),
     jobTitle: jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || '', company, jobDescription: ctx.jobDescription, experienceLevel,
     engine: result.engine, questions: result.questions,
   });
@@ -746,7 +746,7 @@ export const startMock = asyncHandler(async (req, res) => {
 
   const session = await InterviewSession.create({
     user: req.user._id, kind: 'mock', sourceSetId: set?._id, versionId: ctx.version?._id,
-    title: `Mock ${interviewType} interview — ${jobTitle || set?.jobTitle || 'practice'}`.slice(0, 160),
+    title: `Mock ${interviewType} interview, ${jobTitle || set?.jobTitle || 'practice'}`.slice(0, 160),
     jobTitle: jobTitle || set?.jobTitle || '', company: company || set?.company, jobDescription: ctx.jobDescription,
     interviewType, difficulty, durationMinutes: durationMinutes ? Math.min(120, Math.max(5, Number(durationMinutes))) : undefined,
     questionCount: planned.length, plannedQuestions: planned, engine, startedAt: new Date(),
@@ -797,7 +797,7 @@ export const answerMock = asyncHandler(async (req, res) => {
 
   sendSuccess(res, {
     message: 'Answer evaluated',
-    data: { feedback: stored, followUpAdded: Boolean(canFollowUp && followUpQuestion), session: publicSession(session), practiceNote: 'AI-generated practice feedback — not an employer assessment.' },
+    data: { feedback: stored, followUpAdded: Boolean(canFollowUp && followUpQuestion), session: publicSession(session), practiceNote: 'AI-generated practice feedback, not an employer assessment.' },
   });
 });
 

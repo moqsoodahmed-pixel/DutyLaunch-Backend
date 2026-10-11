@@ -17,7 +17,7 @@ import { resumeHaystack } from './resumeSchema.js';
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
 
 export const MATCH_DISCLAIMER =
-  'Profile Match compares your resume against this job description. It reflects how well your documented experience aligns with the stated requirements — not a prediction of whether you will be shortlisted or hired.';
+  'Profile Match compares your resume against this job description. It reflects how well your documented experience aligns with the stated requirements, not a prediction of whether you will be shortlisted or hired.';
 
 /* ------------------------------------------------------------------ *
  * Job match
@@ -79,7 +79,7 @@ function matchExperience(profile, jobIntel) {
     return {
       score: over ? 85 : 100,
       reason: over
-        ? `You have about ${years} years against a stated range of ${req.min}–${req.max}. You may be over-qualified for how the role is written.`
+        ? `You have about ${years} years against a stated range of ${req.min}, ${req.max}. You may be over-qualified for how the role is written.`
         : `You have about ${years} years against a requirement of ${req.min}+.`,
     };
   }
@@ -100,7 +100,7 @@ function matchSeniority(profile, jobIntel) {
 
   const gap = (LEVEL_RANK[jobLevel] ?? 3) - (LEVEL_RANK[candidateLevel] ?? 3);
   if (gap === 0) return { score: 100, reason: `Both the role and your profile read as ${jobLevel.replace('-', ' ')} level.` };
-  if (gap === 1) return { score: 82, reason: 'The role is one level above your current profile — a realistic step up.' };
+  if (gap === 1) return { score: 82, reason: 'The role is one level above your current profile, a realistic step up.' };
   if (gap === -1) return { score: 85, reason: 'The role is one level below your current profile.' };
   if (gap > 1) return { score: clamp(70 - gap * 15), reason: `The role sits about ${gap} levels above your documented profile.` };
   return { score: clamp(75 + gap * 8), reason: `The role sits about ${Math.abs(gap)} levels below your documented profile.` };

@@ -104,11 +104,11 @@ function normaliseMagical(body) {
 
 export async function analyzeWithMagicalApi({ buffer, mimetype, baseUrl }) {
   if (!env.magicalApiKey) {
-    console.warn('[MagicalAPI] MAGICAL_API_KEY is not set — using internal engine.');
+    console.warn('[MagicalAPI] MAGICAL_API_KEY is not set, using internal engine.');
     return null;
   }
   if (mimetype !== 'application/pdf') {
-    console.warn('[MagicalAPI] only PDF resumes are supported — using internal engine for', mimetype);
+    console.warn('[MagicalAPI] only PDF resumes are supported, using internal engine for', mimetype);
     return null;
   }
 
@@ -142,7 +142,7 @@ export async function analyzeWithMagicalApi({ buffer, mimetype, baseUrl }) {
       console.warn(`[MagicalAPI] HTTP ${res.status}:`, text.slice(0, 300));
       return null;
     }
-    console.warn('[MagicalAPI] timed out after 60s — using internal engine.');
+    console.warn('[MagicalAPI] timed out after 60s, using internal engine.');
     return null;
   } catch (err) {
     console.warn('[MagicalAPI] request failed:', err.message);
@@ -295,7 +295,7 @@ export const parseUpload = asyncHandler(async (req, res) => {
          extra. Say so explicitly rather than implying the parse is final. */
       reviewNote:
         resume._needsReview.length > 0
-          ? `We could not read ${resume._needsReview.length} field${resume._needsReview.length === 1 ? '' : 's'} confidently. Check them before you continue — we would rather ask than guess.`
+          ? `We could not read ${resume._needsReview.length} field${resume._needsReview.length === 1 ? '' : 's'} confidently. Check them before you continue, we would rather ask than guess.`
           : 'Everything parsed cleanly, but please check it against your original before continuing.',
     },
   });
@@ -532,7 +532,7 @@ export const submitEvidenceAnswer = asyncHandler(async (req, res) => {
       confirmedFacts: facts,
       suggestedBullet: built,
       note: built
-        ? 'This bullet was built only from what you just confirmed. Edit it freely — nothing is added to your resume until you accept it.'
+        ? 'This bullet was built only from what you just confirmed. Edit it freely, nothing is added to your resume until you accept it.'
         : 'Thanks. There was not enough detail to build a bullet from this yet.',
     },
   });
@@ -713,7 +713,7 @@ export const applyOptimization = asyncHandler(async (req, res) => {
 /** POST /api/career/versions — create a targeted version from the master. */
 export const createVersion = asyncHandler(async (req, res) => {
   const doc = await getProfileDoc(req.user._id, { create: true });
-  if (!doc.master) throw ApiError.badRequest('Upload your CV first — targeted versions are derived from your master profile.');
+  if (!doc.master) throw ApiError.badRequest('Upload your CV first, targeted versions are derived from your master profile.');
 
   const master = parseResumeJson(doc.master);
   const override = await configOverride();
@@ -740,7 +740,7 @@ export const createVersion = asyncHandler(async (req, res) => {
 
   const label =
     req.body?.label?.trim() ||
-    [analysis.jobIntel?.role?.jobTitle, analysis.jobIntel?.role?.company].filter(Boolean).join(' — ') ||
+    [analysis.jobIntel?.role?.jobTitle, analysis.jobIntel?.role?.company].filter(Boolean).join(', ') ||
     `Version ${doc.versions.length + 1}`;
 
   doc.versions.push({
@@ -771,7 +771,7 @@ export const createVersion = asyncHandler(async (req, res) => {
       version: created,
       analysis: targetedAnalysis,
       masterUntouched: true,
-      note: 'Your master profile is unchanged. Roles less relevant to this job were shortened in this version only — nothing was deleted from your full history.',
+      note: 'Your master profile is unchanged. Roles less relevant to this job were shortened in this version only, nothing was deleted from your full history.',
     },
   });
 });

@@ -56,8 +56,8 @@ export const LAYOUTS = [
 
 export const LEVELS = [
     { value: 'all', label: 'All levels' },
-    { value: 'entry', label: '0–3 years' },
-    { value: 'mid', label: '4–14 years' },
+    { value: 'entry', label: '0 to 3 years' },
+    { value: 'mid', label: '4 to 14 years' },
     { value: 'senior', label: '15+ years' },
 ];
 
@@ -92,7 +92,7 @@ export const TEMPLATES = [
         ats: 'max',
         headline: 'Product Manager | 0→1 Products | Platform Strategy | Growth',
         summary:
-            'Product manager with [X] years taking products from concept to adoption. Works best at the boundary between engineering, design and commercial teams — translating between them rather than sitting above any of them.',
+            'Product manager with [X] years taking products from concept to adoption. Works best at the boundary between engineering, design and commercial teams, translating between them rather than sitting above any of them.',
         titles: ['Senior Product Manager', 'Product Manager', 'Associate Product Manager'],
         bullets: [
             'Defined and shipped [product/feature] from discovery to GA in [X] months, reaching [X]k MAU in the first quarter.',
@@ -101,7 +101,7 @@ export const TEMPLATES = [
             'Collaborated with engineering to reduce P1 incident rate by [X]% through better definition-of-done criteria.',
         ],
         skills: ['Product Strategy', 'Roadmapping', 'OKRs', 'User Research', 'A/B Testing', 'SQL', 'Figma', 'JIRA', 'Amplitude', 'Stakeholder Management'],
-        certs: ['Product Management Certification — Product School'],
+        certs: ['Product Management Certification: Product School'],
         degree: DEGREE.mba,
     },
     {
@@ -121,7 +121,7 @@ export const TEMPLATES = [
             'Improved sprint velocity by [X]% over [X] quarters through retrospective-driven process improvements.',
         ],
         skills: ['Project Planning', 'Risk Management', 'Agile / Scrum', 'MS Project', 'JIRA', 'Stakeholder Management', 'Budget Control', 'Change Management', 'PMP / PRINCE2'],
-        certs: ['PMP – Project Management Professional', 'PRINCE2 Practitioner'],
+        certs: ['PMP: Project Management Professional', 'PRINCE2 Practitioner'],
         degree: DEGREE.mba,
     },
     {
@@ -132,7 +132,7 @@ export const TEMPLATES = [
         ats: 'max',
         headline: 'Management Consultant | Strategy | Operating Model | Change Delivery',
         summary:
-            'Management consultant with [X] years across [industries]. Builds the analysis, writes the recommendation and stays in the room for the delivery — not just the slide.',
+            'Management consultant with [X] years across [industries]. Builds the analysis, writes the recommendation and stays in the room for the delivery, not just the slide.',
         titles: ['Senior Consultant', 'Consultant', 'Analyst'],
         bullets: [
             'Led [X]-person workstream on [engagement type]; delivered [X]% cost reduction recommendation adopted by the client.',
@@ -155,13 +155,13 @@ export const TEMPLATES = [
             'Registered nurse with [X] years in [specialty]. Brings clinical accuracy and a clear focus on patient outcomes to both bedside care and ward management responsibilities.',
         titles: ['Senior Staff Nurse', 'Staff Nurse', 'Junior Staff Nurse'],
         bullets: [
-            'Managed care for [X]–[X] patients per shift in [ward/unit]; maintained [X]% medication administration accuracy.',
+            'Managed care for [X], [X] patients per shift in [ward/unit]; maintained [X]% medication administration accuracy.',
             'Led handover process redesign that reduced missed observations by [X]% across the ward.',
             'Mentored [X] student nurses through clinical placements; [X]% completed their competency sign-offs on time.',
             'Contributed to infection control audit; ward maintained zero HCAI incidents for [X] consecutive months.',
         ],
         skills: ['Critical Care', 'IV Therapy', 'Patient Assessment', 'Medication Administration', 'Ward Management', 'Clinical Documentation', 'BLS / ALS Certified', 'EMR / EHR', 'Infection Control'],
-        certs: ['BLS / ACLS Certification', 'Postgraduate Certificate – Critical Care Nursing'],
+        certs: ['BLS / ACLS Certification', 'Postgraduate Certificate: Critical Care Nursing'],
         degree: DEGREE.nursing,
     },
     {
@@ -172,7 +172,7 @@ export const TEMPLATES = [
         ats: 'max',
         headline: 'Secondary School Teacher | English / Mathematics | Curriculum Development',
         summary:
-            'Teacher with [X] years in secondary education. Designs lessons that connect subject content to the students in front of me — and measures whether they worked.',
+            'Teacher with [X] years in secondary education. Designs lessons that connect subject content to the students in front of me, and measures whether they worked.',
         titles: ['Senior Teacher', 'Classroom Teacher', 'Trainee Teacher'],
         bullets: [
             '[Subject] pass rate improved from [X]% to [X]% over [X] academic years with the cohort I led.',
@@ -181,7 +181,7 @@ export const TEMPLATES = [
             'Mentored [X] NQTs through their first year; all received "Good" or "Outstanding" in final assessments.',
         ],
         skills: ['Lesson Planning', 'Curriculum Design', 'Differentiated Instruction', 'Assessment & Feedback', 'Classroom Management', 'Parent Communication', 'SEN Awareness', 'Google Classroom / Microsoft Teams'],
-        certs: ['B.Ed / PGCE', 'CPD – Child Protection Level 3'],
+        certs: ['B.Ed / PGCE', 'CPD: Child Protection Level 3'],
         degree: DEGREE.edu,
     },
 
@@ -205,7 +205,7 @@ export const TEMPLATES = [
             'Reviewed [X] pull requests per week and mentored [X] junior engineers through their first production releases.',
         ],
         skills: ['Java', 'Python', 'Go', 'REST APIs', 'PostgreSQL', 'Redis', 'Docker', 'Kubernetes', 'AWS', 'CI/CD', 'System Design', 'Git'],
-        certs: ['AWS Certified Developer – Associate'],
+        certs: ['AWS Certified Developer: Associate'],
         degree: DEGREE.cs,
     },
     {
@@ -265,7 +265,7 @@ export const TEMPLATES = [
             'Migrated [X] services from on-prem to Kubernetes; coordinated with [X] teams over [X]-month programme.',
         ],
         skills: ['Kubernetes', 'Terraform', 'AWS / GCP', 'GitHub Actions', 'ArgoCD', 'Prometheus / Grafana', 'Docker', 'Bash / Python', 'Linux', 'Incident Management'],
-        certs: ['CKA – Certified Kubernetes Administrator', 'AWS Solutions Architect – Associate'],
+        certs: ['CKA: Certified Kubernetes Administrator', 'AWS Solutions Architect: Associate'],
         degree: DEGREE.cs,
     },
     {
@@ -285,7 +285,7 @@ export const TEMPLATES = [
             'Built detection rules that reduced false-positive alert volume by [X]% without missing a real incident.',
         ],
         skills: ['SIEM (Splunk / Sentinel)', 'Threat Intelligence', 'Incident Response', 'Vulnerability Management', 'Network Security', 'Python', 'MITRE ATT&CK', 'Cloud Security (AWS/Azure)'],
-        certs: ['CompTIA Security+', 'CEH – Certified Ethical Hacker'],
+        certs: ['CompTIA Security+', 'CEH: Certified Ethical Hacker'],
         degree: DEGREE.it,
     },
 
@@ -400,7 +400,7 @@ export const TEMPLATES = [
         ats: 'high',
         headline: 'Sales Manager | B2B SaaS | Enterprise | Revenue Growth',
         summary:
-            'Sales leader with [X] years closing enterprise deals and building the teams that replicate the process. Numbers-first but relationship-led — the two are not in conflict at the right deal size.',
+            'Sales leader with [X] years closing enterprise deals and building the teams that replicate the process. Numbers-first but relationship-led, the two are not in conflict at the right deal size.',
         titles: ['Sales Manager', 'Senior Account Executive', 'Account Executive'],
         bullets: [
             'Exceeded quota by [X]% in [X] of the last [X] quarters; [currency][X]m ARR personally sourced.',
@@ -434,7 +434,7 @@ export const TEMPLATES = [
             'Directed the post-acquisition integration of [X] operations, delivering [currency][X]m in run-rate synergies.',
         ],
         skills: ['P&L Ownership', 'Multi-Site Operations', 'Operating Model Design', 'M&A Integration', 'Board Reporting', 'Executive Leadership', 'Change Leadership', 'Supply Chain Strategy'],
-        certs: ['Executive Education — Operations Strategy (INSEAD / ISB)'],
+        certs: ['Executive Education: Operations Strategy (INSEAD / ISB)'],
         degree: DEGREE.mba,
     },
     {
@@ -454,7 +454,7 @@ export const TEMPLATES = [
             'Presented quarterly marketing performance and strategy directly to the board and CEO.',
         ],
         skills: ['Brand Strategy', 'Go-to-Market Strategy', 'Board Reporting', 'Revenue Marketing', 'P&L Management', 'Executive Leadership', 'M&A / Brand Integration', 'Marketing Operations'],
-        certs: ['Executive Education — Marketing Leadership'],
+        certs: ['Executive Education: Marketing Leadership'],
         degree: DEGREE.mba,
     },
 
@@ -474,7 +474,7 @@ export const TEMPLATES = [
         headline: 'Computer Science Graduate | Full-Stack Projects | Open Source',
         summary:
             'Final-year computer science graduate who has shipped [X] full-stack projects and contributed to [X] open-source repositories. Looking for a first role that turns coursework into production experience.',
-        titles: ['Software Engineering Intern', 'Teaching Assistant — Data Structures', 'Campus Ambassador'],
+        titles: ['Software Engineering Intern', 'Teaching Assistant: Data Structures', 'Campus Ambassador'],
         bullets: [
             'Built [project name], a [what it does], used by [X] classmates/users during a [X]-week build.',
             'Contributed [X] merged pull requests to [open-source project], fixing [bug type] and adding [feature].',
@@ -494,7 +494,7 @@ export const TEMPLATES = [
         headline: 'MBA / BBA Graduate | Business Analysis | Campus Case Competitions',
         summary:
             'Recent MBA/BBA graduate with [X] internships and [X] case competition finishes across strategy, operations and marketing. Comfortable structuring an ambiguous problem before being asked to.',
-        titles: ['Business Analyst Intern', 'Summer Intern — Strategy', 'Student Consultant, Junior Enterprise'],
+        titles: ['Business Analyst Intern', 'Summer Intern: Strategy', 'Student Consultant, Junior Enterprise'],
         bullets: [
             'Completed a [X]-week internship at [company], delivering [recommendation/analysis] adopted by the team.',
             'Finished top [X] of [X] teams in [case competition name], presenting to a panel of [X] industry judges.',

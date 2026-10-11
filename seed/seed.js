@@ -114,12 +114,12 @@ async function seed() {
       await employer.save();
     }
     await Job.create(demoJobs.map((job) => ({ ...job, employer: employer._id })));
-    console.log(`✔ ${demoJobs.length} DEMO jobs (clearly labelled — remove before launch)`);
+    console.log(`✔ ${demoJobs.length} DEMO jobs (clearly labelled, remove before launch)`);
   } else {
     console.log('• No jobs seeded. Real listings only. Use --with-demo-jobs for test data.');
   }
 
-  console.log('• No testimonials seeded — add real, consented client quotes in the admin.');
+  console.log('• No testimonials seeded, add real, consented client quotes in the admin.');
   console.log('\nSeed complete.\n');
 }
 

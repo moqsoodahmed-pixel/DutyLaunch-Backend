@@ -29,14 +29,14 @@ const IMPACT_QUESTIONS = [
   { id: 'errors', prompt: 'Did you reduce errors, defects or escalations?', type: 'text', optional: true },
   { id: 'satisfaction', prompt: 'Did customer or stakeholder satisfaction improve?', type: 'text', optional: true },
   { id: 'automation', prompt: 'Did you automate anything?', type: 'text', optional: true },
-  { id: 'launch', prompt: 'Did you launch anything — a product, process, market or team?', type: 'text', optional: true },
+  { id: 'launch', prompt: 'Did you launch anything, a product, process, market or team?', type: 'text', optional: true },
   { id: 'team', prompt: 'Did you manage a team? How many people reported to you?', type: 'number', unit: 'people', optional: true },
 ];
 
 /** Follow-ups for a confirmed capability (spec §13). */
 const FOLLOW_UPS = {
   default: [
-    { id: 'scale', prompt: 'At what scale — how many, how often, or how large?', type: 'text' },
+    { id: 'scale', prompt: 'At what scale, how many, how often, or how large?', type: 'text' },
     { id: 'method', prompt: 'How did you do it? What was the approach?', type: 'text' },
     { id: 'outcome', prompt: 'What changed as a result? A number if you have one, a plain description if not.', type: 'text' },
     { id: 'tools', prompt: 'Which tools or systems did you use?', type: 'text', optional: true },
@@ -44,14 +44,14 @@ const FOLLOW_UPS = {
   'vendor management': [
     { id: 'scale', prompt: 'How many vendors did you manage?', type: 'number', unit: 'vendors' },
     { id: 'type', prompt: 'What type of vendors were they?', type: 'text' },
-    { id: 'method', prompt: 'What was your process — onboarding, contracts, performance reviews?', type: 'text' },
+    { id: 'method', prompt: 'What was your process, onboarding, contracts, performance reviews?', type: 'text' },
     { id: 'outcome', prompt: 'What was the outcome? (cost, turnaround, quality, compliance)', type: 'text' },
     { id: 'tools', prompt: 'Which tools or systems did you use?', type: 'text', optional: true },
   ],
   'people management': [
     { id: 'scale', prompt: 'How many people reported to you?', type: 'number', unit: 'people' },
     { id: 'type', prompt: 'What did the team do?', type: 'text' },
-    { id: 'method', prompt: 'What did you own — hiring, performance, rostering, development?', type: 'text' },
+    { id: 'method', prompt: 'What did you own, hiring, performance, rostering, development?', type: 'text' },
     { id: 'outcome', prompt: 'What changed under your leadership?', type: 'text' },
   ],
   'process improvement': [
@@ -60,9 +60,9 @@ const FOLLOW_UPS = {
     { id: 'outcome', prompt: 'What was the measured improvement, if you measured one?', type: 'text' },
   ],
   'stakeholder management': [
-    { id: 'type', prompt: 'Which stakeholders — internal teams, clients, regulators, leadership?', type: 'text' },
+    { id: 'type', prompt: 'Which stakeholders, internal teams, clients, regulators, leadership?', type: 'text' },
     { id: 'scale', prompt: 'How senior were they, and how many?', type: 'text' },
-    { id: 'method', prompt: 'What did the engagement involve — reporting, negotiation, escalation?', type: 'text' },
+    { id: 'method', prompt: 'What did the engagement involve, reporting, negotiation, escalation?', type: 'text' },
     { id: 'outcome', prompt: 'What did it achieve?', type: 'text' },
   ],
   'project management': [
@@ -147,14 +147,14 @@ export function generateEvidenceQuestions(resume, { keywordResult, profile, limi
         id: 'fresher:projects',
         kind: 'add-section',
         priority: 0.2,
-        prompt: 'Have you built anything — an academic project, a personal build, a competition entry?',
+        prompt: 'Have you built anything, an academic project, a personal build, a competition entry?',
         why: 'With limited employment history, projects are the strongest evidence you can show. This is not a gap in your CV; it is the section that should lead it.',
         type: 'yes-no',
         followUps: [
           { id: 'name', prompt: 'What was it called?', type: 'text' },
           { id: 'what', prompt: 'What did it do, and what was your part in it?', type: 'text' },
           { id: 'tools', prompt: 'What did you build it with?', type: 'text' },
-          { id: 'outcome', prompt: 'What was the result — a grade, a placement, users, a working demo?', type: 'text', optional: true },
+          { id: 'outcome', prompt: 'What was the result, a grade, a placement, users, a working demo?', type: 'text', optional: true },
         ],
       });
     }
