@@ -25,11 +25,24 @@ app.use(
   })
 );
 
+const DEFAULT_ORIGINS = [
+  'https://dutylaunch.com',
+  'https://www.dutylaunch.com',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
 app.use(
   cors({
     origin(origin, callback) {
       // Same-origin/server-to-server requests arrive without an Origin header.
-      if (!origin || env.clientUrls.includes(origin)) return callback(null, true);
+      if (!origin) return callback(null, true);
+      const allowed = [...env.clientUrls, ...DEFAULT_ORIGINS];
+      const match =
+        allowed.includes(origin) ||
+        allowed.some((u) => u && origin === u.replace(/\/$/, '')) ||
+        /^https:\/\/[a-z0-9-]+\.pages\.dev$/.test(origin);
+      if (match) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
