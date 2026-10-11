@@ -130,7 +130,7 @@ export async function analyzeWithMagicalApi({ buffer, mimetype, baseUrl }) {
       try { body = JSON.parse(text); } catch { /* not JSON */ }
 
       if (res.status === 201 && body?.data?.request_id) {
-        payload.request_id = body.data.request_id; // still processing — poll again
+        payload.request_id = body.data.request_id; // still processing, poll again
         await new Promise((r) => setTimeout(r, 2000));
         continue;
       }

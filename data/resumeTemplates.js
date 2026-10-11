@@ -101,7 +101,7 @@ export const TEMPLATES = [
             'Collaborated with engineering to reduce P1 incident rate by [X]% through better definition-of-done criteria.',
         ],
         skills: ['Product Strategy', 'Roadmapping', 'OKRs', 'User Research', 'A/B Testing', 'SQL', 'Figma', 'JIRA', 'Amplitude', 'Stakeholder Management'],
-        certs: ['Product Management Certification: Product School'],
+        certs: ['Product Management Certification, Product School'],
         degree: DEGREE.mba,
     },
     {
@@ -434,7 +434,7 @@ export const TEMPLATES = [
             'Directed the post-acquisition integration of [X] operations, delivering [currency][X]m in run-rate synergies.',
         ],
         skills: ['P&L Ownership', 'Multi-Site Operations', 'Operating Model Design', 'M&A Integration', 'Board Reporting', 'Executive Leadership', 'Change Leadership', 'Supply Chain Strategy'],
-        certs: ['Executive Education: Operations Strategy (INSEAD / ISB)'],
+        certs: ['Executive Education, Operations Strategy (INSEAD / ISB)'],
         degree: DEGREE.mba,
     },
     {
@@ -454,7 +454,7 @@ export const TEMPLATES = [
             'Presented quarterly marketing performance and strategy directly to the board and CEO.',
         ],
         skills: ['Brand Strategy', 'Go-to-Market Strategy', 'Board Reporting', 'Revenue Marketing', 'P&L Management', 'Executive Leadership', 'M&A / Brand Integration', 'Marketing Operations'],
-        certs: ['Executive Education: Marketing Leadership'],
+        certs: ['Executive Education, Marketing Leadership'],
         degree: DEGREE.mba,
     },
 
@@ -474,7 +474,7 @@ export const TEMPLATES = [
         headline: 'Computer Science Graduate | Full-Stack Projects | Open Source',
         summary:
             'Final-year computer science graduate who has shipped [X] full-stack projects and contributed to [X] open-source repositories. Looking for a first role that turns coursework into production experience.',
-        titles: ['Software Engineering Intern', 'Teaching Assistant: Data Structures', 'Campus Ambassador'],
+        titles: ['Software Engineering Intern', 'Teaching Assistant, Data Structures', 'Campus Ambassador'],
         bullets: [
             'Built [project name], a [what it does], used by [X] classmates/users during a [X]-week build.',
             'Contributed [X] merged pull requests to [open-source project], fixing [bug type] and adding [feature].',
@@ -494,7 +494,7 @@ export const TEMPLATES = [
         headline: 'MBA / BBA Graduate | Business Analysis | Campus Case Competitions',
         summary:
             'Recent MBA/BBA graduate with [X] internships and [X] case competition finishes across strategy, operations and marketing. Comfortable structuring an ambiguous problem before being asked to.',
-        titles: ['Business Analyst Intern', 'Summer Intern: Strategy', 'Student Consultant, Junior Enterprise'],
+        titles: ['Business Analyst Intern', 'Summer Intern, Strategy', 'Student Consultant, Junior Enterprise'],
         bullets: [
             'Completed a [X]-week internship at [company], delivering [recommendation/analysis] adopted by the team.',
             'Finished top [X] of [X] teams in [case competition name], presenting to a panel of [X] industry judges.',

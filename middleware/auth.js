@@ -41,6 +41,20 @@ export const optionalAuth = asyncHandler(async (req, res, next) => {
   return next();
 });
 
+/**
+ * The ATS resume check is for signed-in users only. Requests tagged as an ATS
+ * check (purpose: 'ats' on parse, context: 'ats' on analyze) are rejected
+ * without a valid session. Other callers of the same endpoints (the public
+ * cover letter, LinkedIn and interview tools) are unaffected.
+ */
+export const requireAuthForAts = (req, res, next) => {
+  const isAts = req.body?.purpose === 'ats' || req.body?.context === 'ats';
+  if (isAts && !req.user) {
+    return next(ApiError.unauthorized('Please sign in to check your resume'));
+  }
+  return next();
+};
+
 /** Role gate. Usage: restrictTo('admin'), restrictTo('admin', 'employer') */
 export const restrictTo =
   (...roles) =>

@@ -7,7 +7,7 @@ import { resumeLimiter } from '../middleware/rateLimiters.js';
 
 const router = Router();
 
-// The ATS check needs a signed-in account; the result is saved to the user's history.
+// The ATS check requires a signed-in user; the result is saved to their history.
 router.post('/analyze', resumeLimiter, protect, uploadResumeMemory.single('resume'), requireConsent, resume.analyzeResume);
 router.get('/history', protect, resume.getMyResumeHistory);
 

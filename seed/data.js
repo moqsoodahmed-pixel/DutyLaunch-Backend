@@ -471,7 +471,7 @@ export const faqs = [
   { category: 'Career Services', order: 3, question: 'What if I do not like the first draft?', answer: 'Every CV bundle includes one month of unlimited revisions. Tell us what is wrong and we rewrite it.' },
   { category: 'Career Services', order: 4, question: 'Do you guarantee a job?', answer: 'No, and you should be careful of anyone who does. Hiring decisions depend on the market, the employer and the interview. We can make sure your application is strong and gets seen.' },
   { category: 'Career Services', order: 5, question: 'Do you write cover letters for every application?', answer: 'The bundles include one customised cover letter built around your target role. It is written so you can adapt it per application, and we show you how.' },
-  { category: 'Pricing & Payments', order: 1, question: 'How is CV pricing decided?', answer: 'By your years of experience, because a fifteen-year career takes longer to research and position than a first job. The four bands are ₹599 for 0 to 3 years, ₹899 for 4 to 7 years, ₹1,199 for 8 to 14 years and ₹1,799 for 15 or more.' },
+  { category: 'Pricing & Payments', order: 1, question: 'How is CV pricing decided?', answer: 'By your years of experience, because a fifteen-year career takes longer to research and position than a first job. The four bands are ₹599 for 0–3 years, ₹899 for 4–7 years, ₹1,199 for 8–14 years and ₹1,799 for 15 or more.' },
   { category: 'Pricing & Payments', order: 2, question: 'Are there any hidden charges?', answer: 'No. The price shown for a CV bundle is the full price. Where a service is quoted on request, documentation and attestation, for example, you get a written quote before any work begins.' },
   { category: 'Pricing & Payments', order: 3, question: 'Can I upgrade after ordering?', answer: 'Yes. If your experience band was misjudged, we adjust it and you pay only the difference.' },
   { category: 'Education', order: 1, question: 'Do you charge students for education counselling?', answer: 'The first counselling session is free. Where a paid service applies, we set out the fee in writing before you commit.' },
@@ -499,7 +499,7 @@ export const blogPosts = [
 
 ## What breaks parsing
 
-Two-column layouts are the most common problem. A human reads the left column then the right; a parser often reads straight across, interleaving your job titles with your skills list. Text inside images and graphics is invisible. Headers and footers are frequently skipped entirely, which is unfortunate if that is where your phone number lives. Unusual section headings, "My Journey" instead of "Experience" Get classified as unknown.
+Two-column layouts are the most common problem. A human reads the left column then the right; a parser often reads straight across, interleaving your job titles with your skills list. Text inside images and graphics is invisible. Headers and footers are frequently skipped entirely, which is unfortunate if that is where your phone number lives. Unusual section headings, "My Journey" instead of "Experience", get classified as unknown.
 
 ## What to do instead
 
@@ -605,7 +605,7 @@ A job-search trip works when it is booked around confirmed conversations, not as
 
 ## What job does this unlock?
 
-Not "what field does this relate to" What specific advertisements could you answer after finishing that you cannot answer now? Go and read those advertisements. If the course content does not match what they ask for, the certificate will not close the gap.
+Not "what field does this relate to", what specific advertisements could you answer after finishing that you cannot answer now? Go and read those advertisements. If the course content does not match what they ask for, the certificate will not close the gap.
 
 ## What will you have built?
 

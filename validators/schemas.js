@@ -259,7 +259,7 @@ const jobHints = z
 
 /* A JD can legitimately be long; cap it so one paste cannot exhaust the
    request body limit or the AI context. */
-const jobDescription = z.string().trim().max(30000, 'That job description is unusually long — paste the role details only').optional();
+const jobDescription = z.string().trim().max(30000, 'That job description is unusually long, paste the role details only').optional();
 
 const templateId = z
   .string()
@@ -281,7 +281,7 @@ export const careerParseSchema = z.object({
   consent: consentField,
   // 'builder': only read the file for the Resume Builder — do not replace
   // the saved career profile or start a MagicalAPI check.
-  purpose: z.enum(['profile', 'builder']).optional(),
+  purpose: z.enum(['profile', 'builder', 'ats']).optional(),
 });
 
 export const careerAnalyzeSchema = z.object({
@@ -289,6 +289,8 @@ export const careerAnalyzeSchema = z.object({
   /* false = a read-only preview (e.g. the match on a job page), which
      must not add to the candidate's analysis history. */
   record: z.boolean().optional(),
+  // 'ats': the ATS resume check, which requires a signed-in user.
+  context: z.literal('ats').optional(),
 });
 
 export const careerJobAnalyzeSchema = z

@@ -272,7 +272,7 @@ export const importProfile = asyncHandler(async (req, res) => {
 
   const doc = await getDoc(req.user._id, { create: true });
   let master = imported;
-  let added = addedFromCv.map((a) => `from CV, ${a}`);
+  let added = addedFromCv.map((a) => `from CV: ${a}`);
   if (mode === 'merge' && doc.master) {
     let mergedNew;
     ({ resume: master, added: mergedNew } = mergeResumes(parseResumeJson(doc.master), imported));
@@ -618,7 +618,7 @@ export const createInterviewSet = asyncHandler(async (req, res) => {
   const result = await generateTop10(ctx.resume, genOpts(ctx, { experienceLevel }));
   const set = await InterviewSession.create({
     user: req.user._id, kind: 'top10', versionId: ctx.version?._id,
-    title: `Top 10 to ${jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || 'target role'}`.slice(0, 160),
+    title: `Top 10: ${jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || 'target role'}`.slice(0, 160),
     jobTitle: jobTitle || ctx.analysis.jobIntel?.role?.jobTitle || '', company, jobDescription: ctx.jobDescription, experienceLevel,
     engine: result.engine, questions: result.questions,
   });
@@ -746,7 +746,7 @@ export const startMock = asyncHandler(async (req, res) => {
 
   const session = await InterviewSession.create({
     user: req.user._id, kind: 'mock', sourceSetId: set?._id, versionId: ctx.version?._id,
-    title: `Mock ${interviewType} interview, ${jobTitle || set?.jobTitle || 'practice'}`.slice(0, 160),
+    title: `Mock ${interviewType} interview: ${jobTitle || set?.jobTitle || 'practice'}`.slice(0, 160),
     jobTitle: jobTitle || set?.jobTitle || '', company: company || set?.company, jobDescription: ctx.jobDescription,
     interviewType, difficulty, durationMinutes: durationMinutes ? Math.min(120, Math.max(5, Number(durationMinutes))) : undefined,
     questionCount: planned.length, plannedQuestions: planned, engine, startedAt: new Date(),

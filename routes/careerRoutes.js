@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as career from '../controllers/careerController.js';
-import { optionalAuth, protect } from '../middleware/auth.js';
+import { optionalAuth, protect, requireAuthForAts } from '../middleware/auth.js';
 import { uploadCvMemory } from '../middleware/upload.js';
 import { resumeLimiter, aiLimiter } from '../middleware/rateLimiters.js';
 import { validate } from '../middleware/validate.js';
@@ -26,11 +26,11 @@ import {
  *
  * Access levels:
  *
- *  - `protect` on the ATS / Resume Health analysis surface (analyze,
- *    job/analyze, optimize, validate, evidence) and on anything that reads
- *    or writes the Master Career Profile. A visitor must sign in first.
- *  - `optionalAuth` only on parsing, rendering, export and the career
- *    tools that public pages still use.
+ *  - `optionalAuth` on the analysis surface, so the public career tools can
+ *    work from an uploaded CV. The ATS resume check itself (purpose/context
+ *    'ats') requires a signed-in user via `requireAuthForAts`.
+ *  - `protect` on anything that reads or writes the Master Career
+ *    Profile, which is personal data.
  *
  * Generation endpoints sit behind the AI limiter, parsing and analysis
  * behind the resume limiter.
@@ -48,12 +48,13 @@ router.post(
   optionalAuth,
   uploadCvMemory.single('resume'),
   validate(careerParseSchema),
+  requireAuthForAts,
   career.parseUpload
 );
 
 /* ---------- analysis (§6–§8, §15, §18) ---------- */
-router.post('/analyze', resumeLimiter, protect, validate(careerAnalyzeSchema), career.analyze);
-router.post('/job/analyze', resumeLimiter, protect, validate(careerJobAnalyzeSchema), career.analyzeJob);
+router.post('/analyze', resumeLimiter, optionalAuth, validate(careerAnalyzeSchema), requireAuthForAts, career.analyze);
+router.post('/job/analyze', resumeLimiter, optionalAuth, validate(careerJobAnalyzeSchema), career.analyzeJob);
 
 /* ---------- master career profile (§3, §43) ---------- */
 router.get('/profile', protect, career.getProfile);
