@@ -65,7 +65,11 @@ export const createJob = asyncHandler(async (req, res) => {
     employer: req.user._id,
     company: req.user.role === 'employer' ? req.user.company?.name || req.body.company : req.body.company,
     // Employer posts enter moderation; admins can publish directly.
-    status: isAdmin ? req.body.status || 'draft' : req.body.status === 'published' ? 'pending' : req.body.status || 'draft',
+    status: isAdmin
+      ? req.body.status || 'draft'
+      : req.body.status === 'published' || req.body.status === 'pending'
+        ? 'pending'
+        : req.body.status || 'draft',
   });
   sendSuccess(res, { statusCode: 201, message: 'Job created', data: job });
 });
@@ -91,10 +95,17 @@ async function findOwnedJob(req) {
   return job;
 }
 
+export const getMyJob = asyncHandler(async (req, res) => {
+  const job = await findOwnedJob(req);
+  sendSuccess(res, { message: 'Job details', data: job });
+});
+
 export const updateJob = asyncHandler(async (req, res) => {
   const job = await findOwnedJob(req);
   Object.assign(job, req.body);
-  if (req.user.role !== 'admin' && req.body.status === 'published') job.status = 'pending';
+  if (req.user.role !== 'admin' && (req.body.status === 'published' || req.body.status === 'pending')) {
+    job.status = 'pending';
+  }
   await job.save();
   sendSuccess(res, { message: 'Job updated', data: job });
 });

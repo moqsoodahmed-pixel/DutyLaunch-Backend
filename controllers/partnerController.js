@@ -17,7 +17,7 @@ const IDENTITY_FIELDS = ['name', 'website'];
 /** GET /partners?track=education&programme=b-tech — approved partners only. */
 export const listPublic = asyncHandler(async (req, res) => {
   const filter = { status: 'approved' };
-  if (req.query.track) filter.track = String(req.query.track);
+  if (req.query.track) filter.track = { $in: [String(req.query.track), 'both'] };
   if (req.query.programme) filter.programmes = String(req.query.programme);
   const partners = await PartnerInstitute.find(filter).select(PUBLIC_FIELDS).sort({ name: 1 }).limit(50).lean();
   sendSuccess(res, { message: 'Partner institutes', data: partners });

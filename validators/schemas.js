@@ -96,7 +96,7 @@ export const contactSchema = z.object({
 });
 
 /* ---------- jobs ---------- */
-export const jobSchema = z.object({
+const baseJobSchema = z.object({
   title: z.string().trim().min(3).max(140),
   company: z.string().trim().min(2).max(120),
   location: z.string().trim().min(2).max(120),
@@ -123,6 +123,37 @@ export const jobSchema = z.object({
   isFeatured: z.boolean().optional(),
   expiresAt: z.coerce.date().optional(),
 });
+
+function applyJobRangeRefinements(schema) {
+  return schema
+    .refine(
+      (data) => {
+        if (data.experience && typeof data.experience.min === 'number' && typeof data.experience.max === 'number') {
+          return data.experience.max >= data.experience.min;
+        }
+        return true;
+      },
+      {
+        message: 'Maximum experience must be greater than or equal to minimum experience',
+        path: ['experience', 'max'],
+      }
+    )
+    .refine(
+      (data) => {
+        if (data.salary && typeof data.salary.min === 'number' && typeof data.salary.max === 'number') {
+          return data.salary.max >= data.salary.min;
+        }
+        return true;
+      },
+      {
+        message: 'Maximum salary must be greater than or equal to minimum salary',
+        path: ['salary', 'max'],
+      }
+    );
+}
+
+export const jobSchema = applyJobRangeRefinements(baseJobSchema);
+export const jobUpdateSchema = applyJobRangeRefinements(baseJobSchema.partial());
 
 export const applicationSchema = z.object({
   coverLetter: z.string().trim().max(4000).optional().or(z.literal('')),
@@ -219,7 +250,7 @@ const slug = z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid prog
 
 export const partnerProfileSchema = z.object({
   name: z.string().trim().min(2, 'Enter your institute name').max(120),
-  track: z.enum(['education', 'courses']),
+  track: z.enum(['education', 'courses', 'both']),
   location: z.string().trim().min(2, 'Enter a city, or "Online"').max(80),
   mode: z.enum(['Online', 'Distance', 'Regular', 'Classroom', 'Hybrid']),
   about: z.string().trim().max(280, 'Keep it under 280 characters').optional().or(z.literal('')),

@@ -14,7 +14,7 @@ import mongoose from 'mongoose';
  * 'data-science'. That is what places an approved institute on
  * /higher-education/b-tech, /professional-courses/data-science, etc.
  */
-export const PARTNER_TRACKS = ['education', 'courses'];
+export const PARTNER_TRACKS = ['education', 'courses', 'both'];
 export const PARTNER_MODES = ['Online', 'Distance', 'Regular', 'Classroom', 'Hybrid'];
 export const PARTNER_STATUS = ['pending', 'approved', 'rejected'];
 
