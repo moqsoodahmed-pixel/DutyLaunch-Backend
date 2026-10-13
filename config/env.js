@@ -11,7 +11,7 @@ const optionalDefaults = {
   JWT_EXPIRES_IN: '7d',
   JWT_COOKIE_NAME: 'dl_token',
   UPLOAD_DIR: 'uploads',
-  MAX_UPLOAD_MB: '5',
+  MAX_UPLOAD_MB: '10',
   RATE_LIMIT_WINDOW_MIN: '15',
   RATE_LIMIT_MAX: '300',
   // AI provider for the career tools: 'router', 'gemini', 'openai', 'groq',

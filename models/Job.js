@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import slugify from 'slugify';
 
-export const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'];
+export const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship'];
 export const JOB_STATUS = ['draft', 'pending', 'published', 'closed'];
 export const WORK_MODES = ['On-site', 'Hybrid', 'Remote'];
 

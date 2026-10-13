@@ -709,7 +709,7 @@ export const demoJobs = [
     location: 'Remote: India',
     country: 'India',
     category: 'Technology',
-    jobType: 'Remote',
+    jobType: 'Full-time',
     workMode: 'Remote',
     experience: { min: 3, max: 7 },
     salary: { min: 1800000, max: 2800000, currency: 'INR', period: 'year', disclosed: true },
