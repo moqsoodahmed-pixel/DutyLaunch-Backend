@@ -30,6 +30,8 @@ const DEFAULT_ORIGINS = [
   'https://www.dutylaunch.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
 ];
 
 app.use(
@@ -41,7 +43,8 @@ app.use(
       const match =
         allowed.includes(origin) ||
         allowed.some((u) => u && origin === u.replace(/\/$/, '')) ||
-        /^https:\/\/[a-z0-9-]+\.pages\.dev$/.test(origin);
+        /^https:\/\/[a-z0-9-]+\.pages\.dev$/.test(origin) ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
       if (match) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
