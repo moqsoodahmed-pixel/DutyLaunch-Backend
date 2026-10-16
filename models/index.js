@@ -12,9 +12,12 @@ export { Consultation, CONSULTATION_SERVICES, EXPERIENCE_BANDS } from './Consult
 export { ContactMessage } from './ContactMessage.js';
 export { CVPackage } from './CVPackage.js';
 export { ResumeAnalysis } from './ResumeAnalysis.js';
-export { PartnerInstitute, PARTNER_TRACKS, PARTNER_MODES, PARTNER_STATUS } from './PartnerInstitute.js';
+export { PartnerInstitute, PARTNER_ORG_TYPES, PARTNER_TRACKS, PARTNER_MODES, PARTNER_STATUS } from './PartnerInstitute.js';
 export { CareerProfile, VERSION_KINDS } from './CareerProfile.js';
 export { ScoringConfig } from './ScoringConfig.js';
 export { CoverLetter, COVER_LETTER_TONES } from './CoverLetter.js';
 export { InterviewSession, INTERVIEW_TYPES, INTERVIEW_DIFFICULTIES } from './InterviewSession.js';
 export { Payment, PAYMENT_STATUS, PAYMENT_ITEM_TYPES } from './Payment.js';
+export { Enrolment, ENROLMENT_STATUS } from './Enrolment.js';
+export { FeeConfig, FEE_TYPES } from './FeeConfig.js';
+export { Settlement, SETTLEMENT_STATUS } from './Settlement.js';

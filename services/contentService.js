@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { ApiError } from '../utils/ApiError.js';
 import { escapeRegex, getPagination } from '../utils/pagination.js';
 
@@ -22,6 +23,9 @@ export async function listPublished(Model, query, { searchFields = [], filters =
 }
 
 export async function findOneOrFail(Model, filter, { populate, message = 'Not found' } = {}) {
+  if (filter && filter._id && !mongoose.Types.ObjectId.isValid(filter._id)) {
+    throw ApiError.notFound(message);
+  }
   let cursor = Model.findOne(filter);
   if (populate) cursor = cursor.populate(populate);
   const doc = await cursor;

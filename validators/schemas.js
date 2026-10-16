@@ -30,7 +30,7 @@ export const registerSchema = z.object({
   // accept that, like the profile and consultation schemas already do.
   phone: phone.optional().or(z.literal('')),
   password,
-  role: z.enum(['user', 'employer', 'institute']).optional(),
+  role: z.enum(['user', 'employer', 'institute', 'partner']).optional(),
   company: z
     .object({
       name: z.string().trim().min(2).max(120),
@@ -200,12 +200,73 @@ export const courseSchema = z.object({
   track: z.enum(['professional', 'upskill', 'certification']).optional(),
   outcomes: z.array(z.string().trim().max(200)).max(15).optional(),
   modules: z.array(z.object({ title: z.string().trim().max(140), detail: z.string().trim().max(400).optional() })).max(30).optional(),
+  isFree: z.boolean().optional(),
   price: z.coerce.number().min(0).optional(),
+  currency: z.string().trim().max(10).optional(),
   priceOnRequest: z.boolean().optional(),
   duration: z.string().trim().max(60).optional(),
   level: z.enum(['Beginner', 'Intermediate', 'Advanced']).optional(),
   mode: z.enum(['Online', 'Live online', 'Blended']).optional(),
+  deliveryFormat: z.enum(['Online', 'Offline', 'Hybrid', 'Self-paced']).optional(),
+  location: z.string().trim().max(120).optional().or(z.literal('')),
+  startDate: z.string().optional().or(z.literal('')),
+  endDate: z.string().optional().or(z.literal('')),
+  syllabusUrl: z.string().trim().optional().or(z.literal('')),
+  syllabusName: z.string().trim().optional().or(z.literal('')),
+  enrolmentConditions: z.string().trim().max(1200).optional().or(z.literal('')),
+  learningAccess: z.string().trim().max(1200).optional().or(z.literal('')),
+  thumbnail: z.string().trim().optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']).optional(),
+  approvalStatus: z.enum(['draft', 'pending', 'changes_requested', 'approved', 'rejected']).optional(),
+});
+
+export const educationProgramSchema = z.object({
+  title: z.string().trim().min(3, 'Enter a programme title').max(160),
+  level: z.enum(['Undergraduate', 'Postgraduate', 'Diploma', 'Doctorate', 'Certificate']),
+  qualification: z.string().trim().max(120).optional().or(z.literal('')),
+  field: z.string().trim().min(2, 'Enter a field of study').max(100),
+  summary: z.string().trim().min(10, 'Enter a short summary').max(280),
+  description: z.string().trim().min(20, 'Enter a description'),
+  duration: z.string().trim().max(60).optional().or(z.literal('')),
+  deliveryFormat: z.enum(['Online', 'Offline', 'Hybrid', 'Self-paced']).optional(),
+  fee: z.coerce.number().min(0).optional(),
+  currency: z.string().trim().max(10).optional(),
+  image: z.string().trim().optional().or(z.literal('')),
+  syllabusUrl: z.string().trim().optional().or(z.literal('')),
+  syllabusName: z.string().trim().optional().or(z.literal('')),
+  enrolmentInstructions: z.string().trim().max(1200).optional().or(z.literal('')),
+  entryRequirements: z.array(z.string().trim()).optional(),
+  supportIncluded: z.array(z.string().trim()).optional(),
+  outcomes: z.array(z.string().trim()).optional(),
+  destinations: z.array(z.string().trim()).optional(),
+  intakes: z.array(z.string().trim()).optional(),
+  startDate: z.string().optional().or(z.literal('')),
+  endDate: z.string().optional().or(z.literal('')),
+  status: z.enum(['draft', 'published', 'archived']).optional(),
+  approvalStatus: z.enum(['draft', 'pending', 'changes_requested', 'approved', 'rejected']).optional(),
+});
+
+export const listingModerationSchema = z.object({
+  approvalStatus: z.enum(['approved', 'rejected', 'changes_requested', 'draft', 'pending']),
+  adminFeedback: z.string().trim().max(1000).optional().or(z.literal('')),
+  status: z.enum(['draft', 'published', 'archived']).optional(),
+});
+
+export const feeConfigSchema = z.object({
+  provider: objectId.optional().or(z.literal('')),
+  itemType: z.enum(['course', 'education_program', 'education-program']).optional(),
+  itemId: objectId.optional().or(z.literal('')),
+  isDefault: z.boolean().optional(),
+  feeType: z.enum(['percentage', 'fixed']).optional(),
+  feeValue: z.coerce.number().min(0, 'Fee must be zero or positive'),
+  notes: z.string().trim().max(400).optional().or(z.literal('')),
+  isActive: z.boolean().optional(),
+});
+
+export const settlementUpdateSchema = z.object({
+  status: z.enum(['pending', 'eligible', 'processing', 'paid', 'failed', 'on_hold', 'reversed']),
+  payoutReference: z.string().trim().max(100).optional().or(z.literal('')),
+  notes: z.string().trim().max(1000).optional().or(z.literal('')),
 });
 
 export const testimonialSchema = z.object({
@@ -220,7 +281,7 @@ export const testimonialSchema = z.object({
 });
 
 export const adminUserUpdateSchema = z.object({
-  role: z.enum(['user', 'employer', 'institute', 'admin']).optional(),
+  role: z.enum(['user', 'employer', 'institute', 'partner', 'admin']).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -249,19 +310,38 @@ export const aiChatSchema = z.object({
 const slug = z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid programme');
 
 export const partnerProfileSchema = z.object({
-  name: z.string().trim().min(2, 'Enter your institute name').max(120),
-  track: z.enum(['education', 'courses', 'both']),
-  location: z.string().trim().min(2, 'Enter a city, or "Online"').max(80),
-  mode: z.enum(['Online', 'Distance', 'Regular', 'Classroom', 'Hybrid']),
-  about: z.string().trim().max(280, 'Keep it under 280 characters').optional().or(z.literal('')),
-  website: z.string().trim().url('Enter a full URL, starting with https://').max(200).optional().or(z.literal('')),
+  orgType: z.enum(['university', 'edtech']).optional(),
+  name: z.string().trim().min(2, 'Enter your organization name').max(140),
+  legalName: z.string().trim().max(140).optional().or(z.literal('')),
+  displayName: z.string().trim().max(140).optional().or(z.literal('')),
+  track: z.enum(['education', 'courses', 'both']).optional(),
+  location: z.string().trim().min(2, 'Enter a city, or "Online"').max(100),
+  address: z.string().trim().max(300).optional().or(z.literal('')),
+  city: z.string().trim().max(80).optional().or(z.literal('')),
+  state: z.string().trim().max(80).optional().or(z.literal('')),
+  country: z.string().trim().max(80).optional().or(z.literal('')),
+  mode: z.enum(['Online', 'Distance', 'Regular', 'Classroom', 'Hybrid']).optional(),
+  about: z.string().trim().max(1200).optional().or(z.literal('')),
+  website: z.string().trim().max(200).optional().or(z.literal('')),
+  contactPerson: z.string().trim().max(80).optional().or(z.literal('')),
+  contactEmail: z.string().trim().email('Enter a valid email').optional().or(z.literal('')),
   contactPhone: z.string().trim().max(30).optional().or(z.literal('')),
-  programmes: z.array(slug).min(1, 'Choose at least one programme').max(80),
+  logoUrl: z.string().trim().optional().or(z.literal('')),
+  coverImageUrl: z.string().trim().optional().or(z.literal('')),
+  verificationDetails: z
+    .object({
+      registrationNumber: z.string().trim().max(100).optional().or(z.literal('')),
+      accreditationAffiliation: z.string().trim().max(200).optional().or(z.literal('')),
+      documentUrl: z.string().trim().optional().or(z.literal('')),
+      documentName: z.string().trim().optional().or(z.literal('')),
+    })
+    .optional(),
+  programmes: z.array(slug).optional().default([]),
 });
 
 export const partnerStatusSchema = z.object({
-  status: z.enum(['approved', 'rejected', 'pending']),
-  reviewNote: z.string().trim().max(500).optional().or(z.literal('')),
+  status: z.enum(['incomplete', 'pending', 'changes_requested', 'approved', 'rejected', 'suspended']),
+  reviewNote: z.string().trim().max(1000).optional().or(z.literal('')),
 });
 
 /* ------------------------------------------------------------------ *

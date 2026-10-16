@@ -9,7 +9,8 @@ export async function registerUser({ name, email, phone, password, role = 'user'
   // `user`, `employer` and `institute` can be self-registered; admins are
   // seeded or promoted. An institute account can only edit its own partner
   // profile, and that profile stays hidden until an admin approves it.
-  const safeRole = ['employer', 'institute'].includes(role) ? role : 'user';
+  const normalizedRole = role === 'partner' ? 'institute' : role;
+  const safeRole = ['employer', 'institute'].includes(normalizedRole) ? normalizedRole : 'user';
 
   const user = await User.create({
     name,

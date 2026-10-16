@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
-import { CVPackage, Course, Payment } from '../models/index.js';
+import { CVPackage, Course, EducationProgram, Enrolment, FeeConfig, Payment } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -37,6 +37,74 @@ export function priceBreakdown(rupees) {
   return { baseAmount, gstAmount, gstRate: exclusive ? rate : 0, amount: baseAmount + gstAmount };
 }
 
+/** Helper to create or confirm enrolment after payment is verified (idempotent) */
+export async function confirmEnrolmentForPayment(payment) {
+  if (!['course', 'education-program', 'education_program'].includes(payment.itemType)) {
+    return null;
+  }
+  const normItemType = payment.itemType === 'education-program' ? 'education_program' : payment.itemType;
+  try {
+    const existing = await Enrolment.findOne({
+      user: payment.user,
+      itemType: normItemType,
+      itemId: payment.itemId,
+    });
+    if (existing) {
+      if (existing.status !== 'confirmed') {
+        existing.status = 'confirmed';
+        existing.payment = payment._id;
+        await existing.save();
+      }
+      return existing;
+    }
+
+    let deliveryFormat = 'Online';
+    let learningAccess = { method: 'online', instructions: 'Course access details will be provided by your provider.' };
+
+    if (normItemType === 'course') {
+      const course = await Course.findById(payment.itemId).lean();
+      if (course) {
+        deliveryFormat = course.deliveryFormat || course.mode || 'Online';
+        learningAccess = {
+          method: (course.deliveryFormat || 'online').toLowerCase(),
+          instructions: course.learningAccess || course.enrolmentConditions || 'Your batch confirmation and access details will be shared shortly.',
+          venue: course.location,
+        };
+      }
+    } else {
+      const prog = await EducationProgram.findById(payment.itemId).lean();
+      if (prog) {
+        deliveryFormat = prog.deliveryFormat || 'Online';
+        learningAccess = {
+          method: (prog.deliveryFormat || 'online').toLowerCase(),
+          instructions: prog.enrolmentInstructions || 'A DutyLaunch higher education advisor and institution coordinator will contact you to complete formal enrollment.',
+        };
+      }
+    }
+
+    const created = await Enrolment.create({
+      user: payment.user,
+      partner: payment.partner,
+      itemType: normItemType,
+      itemId: payment.itemId,
+      offeringTitle: payment.itemName,
+      payment: payment._id,
+      status: 'confirmed',
+      deliveryFormat,
+      learningAccess,
+    });
+
+    logger.info(`[payments] confirmed enrolment ${created._id} for user ${payment.user}`);
+    return created;
+  } catch (err) {
+    if (err.code === 11000) {
+      return Enrolment.findOne({ user: payment.user, itemType: normItemType, itemId: payment.itemId });
+    }
+    logger.error(`[payments] error confirming enrolment: ${err.message}`);
+    return null;
+  }
+}
+
 /** Looks up the item and its price on the server. The browser never sends a price. */
 async function resolveItem(itemType, itemId, user) {
   if (itemType === 'template') {
@@ -60,7 +128,25 @@ async function resolveItem(itemType, itemId, user) {
     if (course.priceOnRequest || !(course.price > 0)) {
       throw ApiError.badRequest('This course is priced on request. Book a consultation and a counsellor will share the fee.');
     }
-    return { name: course.title, price: course.price, currency: course.currency || 'INR' };
+    return {
+      name: course.title,
+      price: course.price,
+      currency: course.currency || 'INR',
+      partner: course.institution,
+    };
+  }
+  if (itemType === 'education_program' || itemType === 'education-program') {
+    const program = await EducationProgram.findOne({ _id: itemId, status: 'published' }).lean();
+    if (!program) throw ApiError.notFound('This programme is no longer available.');
+    if (!(program.fee > 0)) {
+      throw ApiError.badRequest('This programme fee is not set. Book a consultation with a counsellor.');
+    }
+    return {
+      name: program.title,
+      price: program.fee,
+      currency: program.currency || 'INR',
+      partner: program.institution,
+    };
   }
   throw ApiError.badRequest('Unknown item type.');
 }
@@ -171,12 +257,36 @@ export const createOrder = asyncHandler(async (req, res) => {
     notes: { userId: String(req.user._id), itemType, itemId: String(item.key || itemId), item: item.name.slice(0, 200) },
   });
 
+  let feeConfigSnapshot;
+  if (item.partner) {
+    const feeConfig = await FeeConfig.resolveFee({
+      providerId: item.partner,
+      itemType,
+      itemId: item.key || itemId,
+    });
+    let platformFeePaise = 0;
+    if (feeConfig.feeType === 'percentage') {
+      platformFeePaise = Math.round((breakdown.baseAmount * feeConfig.feeValue) / 100);
+    } else {
+      platformFeePaise = Math.min(breakdown.baseAmount, Math.round(feeConfig.feeValue * 100));
+    }
+    const providerPayablePaise = Math.max(0, breakdown.baseAmount - platformFeePaise);
+    feeConfigSnapshot = {
+      feeType: feeConfig.feeType,
+      feeValue: feeConfig.feeValue,
+      platformFeePaise,
+      providerPayablePaise,
+    };
+  }
+
   const payment = await Payment.create({
     user: req.user._id,
+    partner: item.partner || undefined,
     itemType,
     ...(item.key ? { itemKey: item.key } : { itemId }),
     itemName: item.name,
     ...breakdown,
+    feeConfigSnapshot,
     currency: item.currency,
     receipt,
     razorpayOrderId: order.id,
@@ -223,6 +333,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     payment.confirmedBy = payment.confirmedBy || 'checkout';
     await payment.save();
     logger.info(`[payments] paid: ${payment.itemType} ${payment.itemId} order ${orderId}`);
+    await confirmEnrolmentForPayment(payment);
   }
 
   sendSuccess(res, { message: 'Payment successful', data: payment.toPublic() });
@@ -277,6 +388,7 @@ export const webhook = asyncHandler(async (req, res) => {
         payment.confirmedBy = 'webhook';
         await payment.save();
         logger.info(`[payments] paid via webhook: order ${orderId}`);
+        await confirmEnrolmentForPayment(payment);
       } else if (event === 'payment.failed' && payment.status === 'created') {
         payment.status = 'failed';
         payment.failureReason = String(entity?.error_description || 'Payment failed').slice(0, 300);

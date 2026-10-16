@@ -9,14 +9,25 @@ import mongoose from 'mongoose';
  * from the browser.
  */
 export const PAYMENT_STATUS = ['created', 'paid', 'failed'];
-export const PAYMENT_ITEM_TYPES = ['cv-package', 'course', 'template'];
+export const PAYMENT_ITEM_TYPES = ['cv-package', 'course', 'template', 'education-program', 'education_program'];
+
+const feeConfigSnapshotSchema = new mongoose.Schema(
+  {
+    feeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
+    feeValue: { type: Number, default: 15 },
+    platformFeePaise: { type: Number, default: 0 },
+    providerPayablePaise: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
 
 const paymentSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    partner: { type: mongoose.Schema.Types.ObjectId, ref: 'PartnerInstitute', index: true },
     itemType: { type: String, enum: PAYMENT_ITEM_TYPES, required: true },
-    // Database id for CV bundles and courses; for templates, itemKey holds
-    // the template id (e.g. "dl-modern") instead.
+    // Database id for CV bundles, courses and education programmes; for templates,
+    // itemKey holds the template id (e.g. "dl-modern") instead.
     itemId: { type: mongoose.Schema.Types.ObjectId },
     itemKey: { type: String, trim: true, maxlength: 60, index: true },
     itemName: { type: String, required: true, trim: true, maxlength: 160 },
@@ -27,6 +38,8 @@ const paymentSchema = new mongoose.Schema(
     gstRate: { type: Number, default: 0 },
     amount: { type: Number, required: true, min: 100 }, // Razorpay minimum is ₹1
     currency: { type: String, default: 'INR' },
+
+    feeConfigSnapshot: { type: feeConfigSnapshotSchema, default: undefined },
 
     status: { type: String, enum: PAYMENT_STATUS, default: 'created', index: true },
     receipt: { type: String, required: true },
@@ -46,6 +59,7 @@ paymentSchema.index({ user: 1, createdAt: -1 });
 paymentSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id,
+    partner: this.partner,
     itemType: this.itemType,
     itemId: this.itemId || this.itemKey,
     itemKey: this.itemKey,
@@ -55,6 +69,7 @@ paymentSchema.methods.toPublic = function toPublic() {
     gstRate: this.gstRate,
     amount: this.amount,
     currency: this.currency,
+    feeConfigSnapshot: this.feeConfigSnapshot,
     status: this.status,
     receipt: this.receipt,
     razorpayOrderId: this.razorpayOrderId,
