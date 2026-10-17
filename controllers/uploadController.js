@@ -47,6 +47,8 @@ export const serveUploadedFile = asyncHandler(async (req, res) => {
 
   // Set secure headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const ext = path.extname(safeFilename).toLowerCase();
   const mimeTypes = {
     '.pdf': 'application/pdf',
@@ -56,6 +58,9 @@ export const serveUploadedFile = asyncHandler(async (req, res) => {
     '.jpeg': 'image/jpeg',
     '.png': 'image/png',
     '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.gif': 'image/gif',
+    '.avif': 'image/avif',
   };
 
   if (mimeTypes[ext]) {

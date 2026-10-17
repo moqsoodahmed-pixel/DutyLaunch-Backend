@@ -18,7 +18,7 @@ app.set('trust proxy', 1);
 
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'same-site' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     frameguard: { action: 'sameorigin' },
     contentSecurityPolicy: env.isProd ? undefined : false,

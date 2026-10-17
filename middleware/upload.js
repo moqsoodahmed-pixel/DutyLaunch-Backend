@@ -17,8 +17,12 @@ const ALLOWED = {
   'application/msword': '.doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
   'image/jpeg': '.jpg',
+  'image/pjpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
+  'image/svg+xml': '.svg',
+  'image/gif': '.gif',
+  'image/avif': '.avif',
 };
 
 const DOC_TYPES = ['application/pdf', 'application/msword',
@@ -52,7 +56,15 @@ function buildUploader(folder, accepted) {
 
 export const uploadResume = buildUploader('resumes', DOC_TYPES);
 export const uploadDocument = buildUploader('documents', Object.keys(ALLOWED));
-export const uploadImage = buildUploader('images', ['image/jpeg', 'image/png', 'image/webp']);
+export const uploadImage = buildUploader('images', [
+  'image/jpeg',
+  'image/pjpeg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+  'image/gif',
+  'image/avif',
+]);
 
 /**
  * ATS analysis reads the file once and does not need it to persist on disk —
