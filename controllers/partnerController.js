@@ -175,13 +175,18 @@ export const getMine = asyncHandler(async (req, res) => {
 /** PUT /partners/me — create or update organization profile. */
 export const upsertMine = asyncHandler(async (req, res) => {
   const updates = { ...req.body };
+  delete updates.status;
+  delete updates.reviewedAt;
+  delete updates.reviewedBy;
+  delete updates.owner;
+
   const existing = await PartnerInstitute.findOne({ owner: req.user._id });
 
   if (!existing) {
     const created = await PartnerInstitute.create({
       ...updates,
       owner: req.user._id,
-      status: updates.status === 'incomplete' ? 'incomplete' : 'pending',
+      status: req.body.status === 'incomplete' ? 'incomplete' : 'pending',
     });
     return sendSuccess(res, {
       statusCode: 201,
