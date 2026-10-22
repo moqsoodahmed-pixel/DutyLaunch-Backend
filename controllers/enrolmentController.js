@@ -1,4 +1,4 @@
-import { Enrolment, Course, EducationProgram, PartnerInstitute } from '../models/index.js';
+import { Enrolment, Course, EducationProgram, PartnerInstitute, User } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, paginationMeta } from '../utils/apiResponse.js';
@@ -13,6 +13,74 @@ export const myEnrolments = asyncHandler(async (req, res) => {
     .lean();
 
   sendSuccess(res, { message: 'Your enrolments', data: enrolments });
+});
+
+/** POST /api/enrolments/apply — candidate submits details to enrol in higher education or course */
+export const applyProgram = asyncHandler(async (req, res) => {
+  const { itemId, itemType = 'education_program', fullName, name, email, phone, mobileNo, currentDegree } = req.body;
+  if (!itemId) throw ApiError.badRequest('Missing programme or course id');
+
+  const candidateName = String(fullName || name || req.user?.name || '').trim();
+  const candidateEmail = String(email || req.user?.email || '').trim().toLowerCase();
+  const candidatePhone = String(phone || mobileNo || req.user?.phone || '').trim();
+  const candidateDegree = String(currentDegree || '').trim();
+
+  if (!candidateName) throw ApiError.badRequest('Please enter your full name');
+  if (!candidateEmail) throw ApiError.badRequest('Please enter your email address');
+  if (!candidatePhone) throw ApiError.badRequest('Please enter your mobile number');
+  if (!candidateDegree) throw ApiError.badRequest('Please enter your current degree');
+
+  let offering;
+  let partnerId;
+  let title;
+  let deliveryFormat = 'Offline';
+
+  if (itemType === 'course') {
+    offering = await Course.findOne({ _id: itemId, status: 'published' }).lean();
+    if (!offering) throw ApiError.notFound('Course not found');
+    partnerId = offering.institution;
+    title = offering.title;
+    deliveryFormat = offering.deliveryFormat || offering.mode || 'Online';
+  } else {
+    offering = await EducationProgram.findOne({ _id: itemId, status: 'published' }).lean();
+    if (!offering) throw ApiError.notFound('Higher education programme not found');
+    partnerId = offering.institution;
+    title = offering.title;
+    deliveryFormat = offering.deliveryFormat || 'Offline';
+  }
+
+  // Associate user account if logged in or existing by email
+  let userId = req.user?._id;
+  if (!userId && candidateEmail) {
+    const existing = await User.findOne({ email: candidateEmail });
+    if (existing) userId = existing._id;
+  }
+
+  const enrolment = await Enrolment.create({
+    user: userId || undefined,
+    partner: partnerId,
+    itemType: itemType === 'course' ? 'course' : 'education_program',
+    itemId,
+    offeringTitle: title,
+    status: 'confirmed',
+    deliveryFormat,
+    candidateDetails: {
+      fullName: candidateName,
+      email: candidateEmail,
+      phone: candidatePhone,
+      currentDegree: candidateDegree,
+    },
+    learningAccess: {
+      method: (deliveryFormat || 'offline').toLowerCase(),
+      instructions: offering.enrolmentInstructions || 'A university counsellor will contact you regarding formal admissions and onboarding.',
+    },
+  });
+
+  sendSuccess(res, {
+    statusCode: 201,
+    message: 'Enrolment application submitted successfully',
+    data: enrolment,
+  });
 });
 
 /** POST /api/enrolments/free — candidate enrols in a verified free course */

@@ -24,7 +24,7 @@ export const listCourses = asyncHandler(async (req, res) => {
     sort: { createdAt: -1 },
     populate: [
       { path: 'category', select: 'name slug icon' },
-      { path: 'institution', select: 'name displayName logoUrl location mode orgType status' },
+      { path: 'institution', select: 'name displayName logoUrl coverImageUrl location city state mode orgType status' },
     ],
   });
 
@@ -48,7 +48,7 @@ export const getCourse = asyncHandler(async (req, res) => {
     {
       populate: [
         { path: 'category', select: 'name slug icon' },
-        { path: 'institution', select: 'name displayName logoUrl location about website mode' },
+        { path: 'institution', select: 'name displayName legalName logoUrl coverImageUrl location address city state country mode about website contactEmail contactPhone orgType status' },
       ],
       message: 'That course is not available or not yet published',
     }
@@ -56,7 +56,10 @@ export const getCourse = asyncHandler(async (req, res) => {
 
   const related = await Course.find({ _id: { $ne: course._id }, status: 'published', approvalStatus: 'approved', track: course.track })
     .limit(3)
-    .select('title slug summary duration level price priceOnRequest isFree deliveryFormat')
+    .populate([
+      { path: 'category', select: 'name slug icon' },
+      { path: 'institution', select: 'name displayName logoUrl coverImageUrl location city state mode orgType status' },
+    ])
     .lean();
 
   sendSuccess(res, { message: 'Course', data: { course, related } });

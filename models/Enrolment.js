@@ -2,6 +2,16 @@ import mongoose from 'mongoose';
 
 export const ENROLMENT_STATUS = ['confirmed', 'pending_verification', 'cancelled', 'refunded'];
 
+const candidateDetailsSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    phone: { type: String, trim: true },
+    currentDegree: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
 const learningAccessSchema = new mongoose.Schema(
   {
     method: { type: String, default: 'online' },
@@ -14,7 +24,7 @@ const learningAccessSchema = new mongoose.Schema(
 
 const enrolmentSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     partner: { type: mongoose.Schema.Types.ObjectId, ref: 'PartnerInstitute', index: true },
     itemType: { type: String, enum: ['course', 'education_program', 'education-program'], required: true, index: true },
     itemId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
@@ -22,14 +32,16 @@ const enrolmentSchema = new mongoose.Schema(
     payment: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
     status: { type: String, enum: ENROLMENT_STATUS, default: 'confirmed', index: true },
     deliveryFormat: { type: String, default: 'Online' },
+    candidateDetails: { type: candidateDetailsSchema, default: () => ({}) },
     learningAccess: { type: learningAccessSchema, default: () => ({}) },
     enrolledAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-// Prevent duplicate enrolments for the same candidate and offering
-enrolmentSchema.index({ user: 1, itemType: 1, itemId: 1 }, { unique: true });
+// Unique index per user and offering (sparse to allow guest applications)
+enrolmentSchema.index({ user: 1, itemType: 1, itemId: 1 }, { unique: true, sparse: true });
+enrolmentSchema.index({ partner: 1, createdAt: -1 });
 
 enrolmentSchema.methods.toPublic = function toPublic() {
   return {
@@ -42,6 +54,7 @@ enrolmentSchema.methods.toPublic = function toPublic() {
     payment: this.payment,
     status: this.status,
     deliveryFormat: this.deliveryFormat,
+    candidateDetails: this.candidateDetails,
     learningAccess: this.learningAccess,
     enrolledAt: this.enrolledAt,
     createdAt: this.createdAt,
