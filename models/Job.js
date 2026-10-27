@@ -62,7 +62,7 @@ jobSchema.pre('validate', async function setSlug(next) {
     }
     this.slug = candidate;
   }
-  if (this.isModified('status') && this.status === 'published' && !this.publishedAt) {
+  if (this.status === 'published' && !this.publishedAt) {
     this.publishedAt = new Date();
   }
   return next();
