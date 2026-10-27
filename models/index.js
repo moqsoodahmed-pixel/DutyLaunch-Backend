@@ -21,3 +21,4 @@ export { Payment, PAYMENT_STATUS, PAYMENT_ITEM_TYPES } from './Payment.js';
 export { Enrolment, ENROLMENT_STATUS } from './Enrolment.js';
 export { FeeConfig, FEE_TYPES } from './FeeConfig.js';
 export { Settlement, SETTLEMENT_STATUS } from './Settlement.js';
+export { UploadedFile } from './UploadedFile.js';
