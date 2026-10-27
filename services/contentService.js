@@ -11,7 +11,9 @@ export async function listPublished(Model, query, { searchFields = [], filters =
   const filter = { ...filters };
 
   if (query.q && searchFields.length) {
-    const rx = new RegExp(escapeRegex(query.q), 'i');
+    const rawQ = String(query.q).trim();
+    const flexiblePattern = escapeRegex(rawQ).replace(/\\\./g, '\\.?');
+    const rx = new RegExp(flexiblePattern, 'i');
     filter.$or = searchFields.map((field) => ({ [field]: rx }));
   }
 
