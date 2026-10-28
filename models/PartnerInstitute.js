@@ -59,6 +59,8 @@ const partnerSchema = new mongoose.Schema(
       index: true,
     },
     status: { type: String, enum: PARTNER_STATUS, default: 'pending', index: true },
+    isApproved: { type: Boolean, default: false, index: true },
+    pendingChanges: { type: mongoose.Schema.Types.Mixed, default: null },
     reviewNote: { type: String, trim: true, maxlength: 1000 },
     reviewedAt: Date,
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

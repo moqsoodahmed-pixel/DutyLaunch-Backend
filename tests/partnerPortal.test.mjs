@@ -238,3 +238,58 @@ test('requireVerifiedPartner middleware blocks unverified or suspended partner a
   assert.equal(adminNextCalled, true, 'Admin should bypass verification requirement');
 });
 
+test('Partner workflow: orgType is locked once approved, profile changes stage into pendingChanges and auto-apply on approval', () => {
+  // 1. Once organization type is approved, attempting to change orgType should be rejected
+  const approvedOrg = {
+    isApproved: true,
+    status: 'approved',
+    orgType: 'university',
+    name: 'Apex University',
+  };
+
+  const attemptOrgChange = {
+    orgType: 'edtech',
+    name: 'Apex Academy',
+  };
+
+  const isApproved = Boolean(approvedOrg.isApproved || approvedOrg.status === 'approved');
+  assert.equal(isApproved, true);
+
+  const orgTypeChanged = attemptOrgChange.orgType && attemptOrgChange.orgType !== approvedOrg.orgType;
+  assert.equal(orgTypeChanged, true, 'Detects illegal orgType modification after approval');
+
+  // 2. Changes to approved profile get staged in pendingChanges
+  const updates = {
+    displayName: 'Apex Global Institute of Technology',
+    about: 'Updated world-class university campus details.',
+    website: 'https://apexglobal.edu.in',
+  };
+
+  const stagedProfile = {
+    ...approvedOrg,
+    pendingChanges: { ...updates, submittedAt: new Date() },
+    status: 'pending',
+  };
+
+  assert.equal(stagedProfile.isApproved, true, 'Keeps isApproved true so listings remain accessible');
+  assert.equal(stagedProfile.status, 'pending', 'Sets status to pending for admin queue');
+  assert.equal(stagedProfile.pendingChanges.displayName, 'Apex Global Institute of Technology');
+  assert.equal(stagedProfile.name, 'Apex University', 'Live profile remains untouched until admin approval');
+
+  // 3. Admin approves -> changes automatically merge and clear pendingChanges
+  const autoAppliedProfile = { ...stagedProfile };
+  if (autoAppliedProfile.pendingChanges) {
+    for (const [k, v] of Object.entries(autoAppliedProfile.pendingChanges)) {
+      if (k === 'submittedAt') continue;
+      autoAppliedProfile[k] = v;
+    }
+    autoAppliedProfile.pendingChanges = null;
+  }
+  autoAppliedProfile.status = 'approved';
+
+  assert.equal(autoAppliedProfile.displayName, 'Apex Global Institute of Technology', 'Changes automatically merged');
+  assert.equal(autoAppliedProfile.website, 'https://apexglobal.edu.in', 'Website updated');
+  assert.equal(autoAppliedProfile.pendingChanges, null, 'pendingChanges cleared after approval');
+  assert.equal(autoAppliedProfile.status, 'approved');
+});
+

@@ -179,6 +179,8 @@ export const upsertMine = asyncHandler(async (req, res) => {
   delete updates.reviewedAt;
   delete updates.reviewedBy;
   delete updates.owner;
+  delete updates.isApproved;
+  delete updates.pendingChanges;
 
   const existing = await PartnerInstitute.findOne({ owner: req.user._id });
 
@@ -198,14 +200,40 @@ export const upsertMine = asyncHandler(async (req, res) => {
     });
   }
 
-  const identityChanged = IDENTITY_FIELDS.some(
-    (f) => f in updates && (updates[f] || '') !== (existing[f] || '')
+  const isAlreadyApproved = Boolean(
+    existing.isApproved || existing.status === 'approved' || (existing.reviewedAt && existing.status !== 'rejected')
   );
 
+  if (isAlreadyApproved) {
+    // 1. Once organization type is approved, partner cannot change orgType
+    if (updates.orgType && updates.orgType !== existing.orgType) {
+      throw ApiError.badRequest(
+        'Organization type cannot be changed once approved. Please contact DutyLaunch support if your legal entity structure has changed.'
+      );
+    }
+    // Guarantee orgType remains locked
+    updates.orgType = existing.orgType;
+
+    // 2. Stage updates into pendingChanges so live profile remains active until admin approval
+    const pendingData = { ...updates, submittedAt: new Date() };
+
+    existing.pendingChanges = pendingData;
+    existing.status = 'pending';
+    existing.reviewNote = undefined;
+    existing.markModified('pendingChanges');
+    await existing.save();
+
+    return sendSuccess(res, {
+      message:
+        'Your profile changes have been submitted for admin review. Once approved, the changes will be automatically applied to your live profile.',
+      data: existing,
+    });
+  }
+
+  // Not yet approved: direct update
   Object.assign(existing, updates);
 
-  // Re-review after an identity change, or when a rejected profile is fixed
-  if ((existing.status === 'approved' && identityChanged) || existing.status === 'rejected' || existing.status === 'changes_requested') {
+  if (existing.status === 'rejected' || existing.status === 'changes_requested') {
     existing.status = 'pending';
     existing.reviewNote = undefined;
   }
@@ -294,7 +322,34 @@ export const adminSetStatus = asyncHandler(async (req, res) => {
   const partner = await PartnerInstitute.findById(req.params.id);
   if (!partner) throw ApiError.notFound('Partner organization not found');
 
-  partner.status = req.body.status;
+  const nextStatus = req.body.status;
+
+  if (nextStatus === 'approved') {
+    partner.isApproved = true;
+
+    // Automatically apply and save pending profile changes if any were submitted
+    if (partner.pendingChanges && typeof partner.pendingChanges === 'object') {
+      const changes = partner.pendingChanges;
+      for (const [key, value] of Object.entries(changes)) {
+        if (key === 'submittedAt' || key === 'status' || key === 'owner' || key === 'orgType' || key === 'isApproved') {
+          continue;
+        }
+        if (key === 'verificationDetails' && typeof value === 'object' && value !== null) {
+          partner.verificationDetails = {
+            ...(partner.verificationDetails?.toObject?.() || partner.verificationDetails || {}),
+            ...value,
+          };
+        } else {
+          partner[key] = value;
+        }
+      }
+      partner.pendingChanges = null;
+      partner.markModified('pendingChanges');
+      partner.markModified('verificationDetails');
+    }
+  }
+
+  partner.status = nextStatus;
   partner.reviewNote = req.body.reviewNote || undefined;
   partner.reviewedAt = new Date();
   partner.reviewedBy = req.user._id;

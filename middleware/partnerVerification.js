@@ -27,7 +27,8 @@ export const requireVerifiedPartner = asyncHandler(async (req, res, next) => {
     throw ApiError.forbidden('Your partner organization has been suspended. Please contact support.');
   }
 
-  if (partner.status !== 'approved') {
+  const isApproved = partner.isApproved || partner.status === 'approved' || (partner.reviewedAt && partner.status !== 'rejected');
+  if (!isApproved) {
     throw ApiError.forbidden(
       `Your organization status is "${partner.status}". Listings can only be created after your organization has been verified and approved by admin.`
     );
