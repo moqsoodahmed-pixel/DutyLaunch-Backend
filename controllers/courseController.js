@@ -132,6 +132,10 @@ export const createCourse = asyncHandler(async (req, res) => {
 export const updateCourse = asyncHandler(async (req, res) => {
   const course = await findOneOrFail(Course, { _id: req.params.id }, { message: 'Course not found' });
 
+  if (req.user.role === 'admin' && course.institution) {
+    throw ApiError.forbidden('Admin cannot directly edit partner courses. Use moderation actions instead.');
+  }
+
   if (req.user.role !== 'admin') {
     if (!req.partner || String(course.institution) !== String(req.partner._id)) {
       throw ApiError.forbidden('You can only modify courses belonging to your own organization');
