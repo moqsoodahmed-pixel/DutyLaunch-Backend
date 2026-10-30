@@ -105,6 +105,9 @@ export const createCourse = asyncHandler(async (req, res) => {
     payload.institution = partnerId;
   }
 
+  if (payload.startDate === '') delete payload.startDate;
+  if (payload.endDate === '') delete payload.endDate;
+
   validateDates(payload.startDate, payload.endDate);
 
   // Handle free vs paid pricing
@@ -144,6 +147,9 @@ export const updateCourse = asyncHandler(async (req, res) => {
 
   const updates = { ...req.body };
   delete updates.institution;
+
+  if (updates.startDate === '') updates.startDate = undefined;
+  if (updates.endDate === '') updates.endDate = undefined;
 
   validateDates(updates.startDate || course.startDate, updates.endDate || course.endDate);
 

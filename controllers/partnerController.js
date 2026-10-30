@@ -215,7 +215,15 @@ export const upsertMine = asyncHandler(async (req, res) => {
     updates.orgType = existing.orgType;
 
     // 2. Stage updates into pendingChanges so live profile remains active until admin approval
-    const pendingData = { ...updates, submittedAt: new Date() };
+    const pendingData = {
+      ...(existing.pendingChanges || {}),
+      ...updates,
+      verificationDetails: {
+        ...((existing.pendingChanges && existing.pendingChanges.verificationDetails) || {}),
+        ...(updates.verificationDetails || {}),
+      },
+      submittedAt: new Date(),
+    };
 
     existing.pendingChanges = pendingData;
     existing.status = 'pending';
@@ -347,6 +355,8 @@ export const adminSetStatus = asyncHandler(async (req, res) => {
       partner.markModified('pendingChanges');
       partner.markModified('verificationDetails');
     }
+  } else {
+    partner.isApproved = false;
   }
 
   partner.status = nextStatus;

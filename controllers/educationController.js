@@ -85,6 +85,8 @@ export const createProgram = asyncHandler(async (req, res) => {
   if (partnerId) {
     payload.institution = partnerId;
   }
+  if (payload.startDate === '') delete payload.startDate;
+  if (payload.endDate === '') delete payload.endDate;
 
   // Determine initial approval status
   if (payload.submitForReview) {
@@ -116,6 +118,9 @@ export const updateProgram = asyncHandler(async (req, res) => {
 
   const updates = { ...req.body };
   delete updates.institution; // prevent re-assigning ownership
+
+  if (updates.startDate === '') updates.startDate = undefined;
+  if (updates.endDate === '') updates.endDate = undefined;
 
   // If submitting for review or resubmitting after changes requested / rejected
   if (updates.submitForReview || program.approvalStatus === 'changes_requested' || program.approvalStatus === 'rejected') {

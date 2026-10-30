@@ -13,7 +13,13 @@ export const dashboard = asyncHandler(async (req, res) => {
 export const listUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query, { defaultLimit: 20 });
   const filter = {};
-  if (req.query.role) filter.role = req.query.role;
+  if (req.query.role) {
+    if (req.query.role === 'partner' || req.query.role === 'institute') {
+      filter.role = { $in: ['partner', 'institute'] };
+    } else {
+      filter.role = req.query.role;
+    }
+  }
   if (req.query.q) {
     const rx = new RegExp(escapeRegex(req.query.q), 'i');
     filter.$or = [{ name: rx }, { email: rx }];

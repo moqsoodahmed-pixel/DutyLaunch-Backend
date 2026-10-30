@@ -1,5 +1,6 @@
 import {
   User, Job, JobApplication, Course, BlogPost, Consultation, ContactMessage, FAQ,
+  PartnerInstitute, EducationProgram,
 } from '../models/index.js';
 
 export async function getDashboardStats() {
@@ -8,6 +9,7 @@ export async function getDashboardStats() {
   const [
     totalUsers, totalEmployers, totalJobs, publishedJobs, totalApplications,
     totalCourses, totalPosts, newConsultations, totalConsultations, unreadMessages, totalFaqs,
+    totalPartners, pendingPartners, totalProgrammes,
   ] = await Promise.all([
     User.countDocuments({ role: 'user' }),
     User.countDocuments({ role: 'employer' }),
@@ -20,6 +22,9 @@ export async function getDashboardStats() {
     Consultation.countDocuments(),
     ContactMessage.countDocuments({ status: 'new' }),
     FAQ.countDocuments({ isPublished: true }),
+    PartnerInstitute.countDocuments({ status: 'approved' }),
+    PartnerInstitute.countDocuments({ $or: [{ status: 'pending' }, { pendingChanges: { $ne: null } }] }),
+    EducationProgram.countDocuments({ status: 'published' }),
   ]);
 
   const [consultationTrend, applicationsByStatus, topCategories] = await Promise.all([
@@ -41,6 +46,7 @@ export async function getDashboardStats() {
     counts: {
       totalUsers, totalEmployers, totalJobs, publishedJobs, totalApplications,
       totalCourses, totalPosts, totalConsultations, newConsultations, unreadMessages, totalFaqs,
+      totalPartners, pendingPartners, totalProgrammes,
     },
     consultationTrend: consultationTrend.map((d) => ({ date: d._id, count: d.count })),
     applicationsByStatus: applicationsByStatus.map((d) => ({ status: d._id, count: d.count })),

@@ -50,8 +50,18 @@ export const mySettlements = asyncHandler(async (req, res) => {
   sendSuccess(res, {
     message: 'Your settlements',
     data: {
-      settlements: settlements.map((s) => s.toPublic ? s.toPublic() : s),
+      settlements: settlements.map((s) => ({
+        ...s,
+        id: s._id,
+        grossAmount: Math.round((s.grossAmountPaise || 0) / 100),
+        platformCommission: Math.round((s.platformFeePaise || 0) / 100),
+        netPayable: Math.round((s.payableAmountPaise || 0) / 100),
+      })),
       summary: {
+        grossCollected: Math.round((totalGross || 0) / 100),
+        platformCommission: Math.round((totalCommission || 0) / 100),
+        settledAmount: Math.round((totalPaid || 0) / 100),
+        netPayableBalance: Math.round((currentUnbatchedBalance || 0) / 100),
         totalGrossPaise: totalGross,
         totalCommissionPaise: totalCommission,
         totalPayablePaise: totalPayable,
@@ -72,7 +82,7 @@ export const adminListSettlements = asyncHandler(async (req, res) => {
   if (req.query.partner) filter.partner = req.query.partner;
   if (req.query.status) filter.status = req.query.status;
 
-  const [items, total] = await Promise.all([
+  const [items, total, totalGrossAgg, totalSettledAgg] = await Promise.all([
     Settlement.find(filter)
       .populate('partner', 'name displayName orgType location')
       .populate('processedBy', 'name email')
@@ -81,11 +91,33 @@ export const adminListSettlements = asyncHandler(async (req, res) => {
       .limit(limit)
       .lean(),
     Settlement.countDocuments(filter),
+    Payment.aggregate([
+      { $match: { status: 'paid', partner: { $ne: null } } },
+      { $group: { _id: null, gross: { $sum: '$amount' } } },
+    ]),
+    Settlement.aggregate([
+      { $match: { status: 'paid' } },
+      { $group: { _id: null, settled: { $sum: '$payableAmountPaise' } } },
+    ]),
   ]);
+
+  const grossCollectedPaise = totalGrossAgg[0]?.gross || 0;
+  const settledAmountPaise = totalSettledAgg[0]?.settled || 0;
 
   sendSuccess(res, {
     message: 'All settlements',
-    data: items,
+    data: items.map((s) => ({
+      ...s,
+      grossAmount: Math.round((s.grossAmountPaise || 0) / 100),
+      platformCommission: Math.round((s.platformFeePaise || 0) / 100),
+      netPayable: Math.round((s.payableAmountPaise || 0) / 100),
+    })),
+    summary: {
+      grossCollected: Math.round(grossCollectedPaise / 100),
+      settledAmount: Math.round(settledAmountPaise / 100),
+      grossCollectedPaise,
+      settledAmountPaise,
+    },
     meta: paginationMeta({ page, limit, total }),
   });
 });
