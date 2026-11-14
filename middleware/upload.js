@@ -66,6 +66,37 @@ export const uploadImage = buildUploader('images', [
   'image/avif',
 ]);
 
+export const uploadResumeOrderFiles = multer({
+  storage: diskStorage('resumes'),
+  limits: { fileSize: 10 * 1024 * 1024, files: 2 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!DOC_TYPES.includes(file.mimetype) || !RESUME_EXTENSIONS.includes(ext)) {
+      return cb(ApiError.badRequest('Please upload your resume or CV as a PDF, DOC, or DOCX file (up to 10MB).'));
+    }
+    return cb(null, true);
+  },
+}).fields([
+  { name: 'resume', maxCount: 1 },
+  { name: 'cv', maxCount: 1 },
+]);
+
+export const uploadAdminResumeOrderFiles = multer({
+  storage: diskStorage('resumes'),
+  limits: { fileSize: 15 * 1024 * 1024, files: 2 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!DOC_TYPES.includes(file.mimetype) || !RESUME_EXTENSIONS.includes(ext)) {
+      return cb(ApiError.badRequest('Completed files must be in PDF, DOC, or DOCX format.'));
+    }
+    return cb(null, true);
+  },
+}).fields([
+  { name: 'completedResume', maxCount: 1 },
+  { name: 'completedCv', maxCount: 1 },
+  { name: 'file', maxCount: 1 },
+]);
+
 /**
  * ATS analysis reads the file once and does not need it to persist on disk —
  * so it is held in memory only, validated the same way, and discarded after

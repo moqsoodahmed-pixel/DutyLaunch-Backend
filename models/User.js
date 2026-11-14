@@ -3,7 +3,16 @@ import { consentRecordSchema } from '../utils/consent.js';
 import bcrypt from 'bcryptjs';
 
 // 'institute' / 'partner' = a university, college or training company that manages a partner profile.
-export const ROLES = ['user', 'employer', 'institute', 'partner', 'admin'];
+export const ROLES = [
+  'user',
+  'employer',
+  'institute',
+  'partner',
+  'admin',
+  'super_admin',
+  'assistant_admin',
+  'master_admin',
+];
 
 const profileSchema = new mongoose.Schema(
   {

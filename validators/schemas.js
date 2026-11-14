@@ -287,7 +287,9 @@ export const testimonialSchema = z.object({
 });
 
 export const adminUserUpdateSchema = z.object({
-  role: z.enum(['user', 'employer', 'institute', 'partner', 'admin']).optional(),
+  role: z
+    .enum(['user', 'employer', 'institute', 'partner', 'admin', 'super_admin', 'assistant_admin', 'master_admin'])
+    .optional(),
   isActive: z.boolean().optional(),
 });
 

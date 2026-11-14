@@ -55,11 +55,17 @@ export const requireAuthForAts = (req, res, next) => {
   return next();
 };
 
+export const ADMIN_ROLES = ['admin', 'super_admin', 'assistant_admin', 'master_admin'];
+export const isUserAdmin = (user) => ADMIN_ROLES.includes(user?.role);
+
 /** Role gate. Usage: restrictTo('admin'), restrictTo('admin', 'employer') */
 export const restrictTo =
   (...roles) =>
   (req, res, next) => {
     if (!req.user) return next(ApiError.unauthorized());
-    if (!roles.includes(req.user.role)) return next(ApiError.forbidden());
+    const effectiveRoles = roles.includes('admin')
+      ? [...new Set([...roles, ...ADMIN_ROLES])]
+      : roles;
+    if (!effectiveRoles.includes(req.user.role)) return next(ApiError.forbidden());
     return next();
   };

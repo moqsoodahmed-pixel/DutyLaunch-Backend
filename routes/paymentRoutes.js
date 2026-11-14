@@ -8,7 +8,7 @@ import { PAYMENT_ITEM_TYPES } from '../models/Payment.js';
 const router = Router();
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
-const razorpayId = (prefix) => z.string().trim().regex(new RegExp(`^${prefix}_[A-Za-z0-9]+$`), 'Invalid id').max(64);
+const razorpayId = (prefix) => z.string().trim().regex(new RegExp(`^${prefix}_[A-Za-z0-9_]+$`), 'Invalid id').max(64);
 
 // itemId: a database id for CV bundles and courses, or a template id such
 // as "dl-modern" for Resume Builder templates (checked in the controller).

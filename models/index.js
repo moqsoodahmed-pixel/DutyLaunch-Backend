@@ -22,3 +22,5 @@ export { Enrolment, ENROLMENT_STATUS } from './Enrolment.js';
 export { FeeConfig, FEE_TYPES } from './FeeConfig.js';
 export { Settlement, SETTLEMENT_STATUS } from './Settlement.js';
 export { UploadedFile } from './UploadedFile.js';
+export { ResumeBuildOrder, RESUME_ORDER_STATUSES, generateOrderNumber } from './ResumeBuildOrder.js';
+export { Notification, NOTIFICATION_TYPES } from './Notification.js';

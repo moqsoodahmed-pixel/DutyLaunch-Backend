@@ -21,6 +21,8 @@ import paymentRoutes from './paymentRoutes.js';
 import enrolmentRoutes from './enrolmentRoutes.js';
 import settlementRoutes from './settlementRoutes.js';
 import uploadRoutes from './uploadRoutes.js';
+import resumeOrderRoutes from './resumeOrderRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 const router = Router();
 
@@ -51,5 +53,7 @@ router.use('/payments', paymentRoutes);
 router.use('/enrolments', enrolmentRoutes);
 router.use('/settlements', settlementRoutes);
 router.use('/uploads', uploadRoutes);
+router.use('/resume-orders', resumeOrderRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

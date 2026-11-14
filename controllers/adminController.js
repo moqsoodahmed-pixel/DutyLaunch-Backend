@@ -16,6 +16,8 @@ export const listUsers = asyncHandler(async (req, res) => {
   if (req.query.role) {
     if (req.query.role === 'partner' || req.query.role === 'institute') {
       filter.role = { $in: ['partner', 'institute'] };
+    } else if (req.query.role === 'admin') {
+      filter.role = { $in: ['admin', 'super_admin', 'assistant_admin', 'master_admin'] };
     } else {
       filter.role = req.query.role;
     }

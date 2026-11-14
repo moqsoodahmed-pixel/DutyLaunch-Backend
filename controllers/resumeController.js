@@ -36,6 +36,7 @@ export const analyzeResume = asyncHandler(async (req, res) => {
       weaknesses: result.weaknesses,
       recommendations: result.recommendations,
       suggested: result.suggested || null,
+      disclaimer: "This ATS Score is generated using DutyLaunch's internal evaluation system. It is intended only as a reference based on our internal scoring methodology. It is NOT a universal ATS score.",
       createdAt: record.createdAt,
     },
   });

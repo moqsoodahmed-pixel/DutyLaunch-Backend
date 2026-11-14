@@ -17,7 +17,7 @@ const cvPackageSchema = new mongoose.Schema(
     tagline: { type: String, maxlength: 200 },
     bestFor: { type: String, maxlength: 200 },
     features: [{ label: { type: String, trim: true }, included: { type: Boolean, default: true } }],
-    deliveryDays: { type: String, default: '2-3 days' },
+    deliveryDays: { type: String, default: 'Within a day' },
     revisionWindow: { type: String, default: '1 month unlimited revisions' },
     isPopular: { type: Boolean, default: false },
     order: { type: Number, default: 0 },
