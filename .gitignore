@@ -30,3 +30,9 @@ Thumbs.db
 
 # User Uploads
 uploads/*
+
+# Testing, Scratch & Verification capture scripts
+scripts/capture*.mjs
+scripts/checkFlightVector.mjs
+scripts/testThree.mjs
+scratch/
