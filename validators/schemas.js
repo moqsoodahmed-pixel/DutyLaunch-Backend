@@ -50,6 +50,20 @@ export const changePasswordSchema = z.object({
 
 export const forgotPasswordSchema = z.object({ email });
 
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(1, 'Reset token is required'),
+  newPassword: password,
+});
+
+export const googleAuthSchema = z.object({
+  credential: z.string().optional(),
+  token: z.string().optional(),
+  email: z.string().trim().toLowerCase().email().optional(),
+  name: z.string().optional(),
+  avatar: z.string().optional(),
+  googleId: z.string().optional(),
+});
+
 export const updateProfileSchema = z.object({
   name: name.optional(),
   phone: phone.optional().or(z.literal('')),

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import crypto from 'node:crypto';
 import { consentRecordSchema } from '../utils/consent.js';
 import bcrypt from 'bcryptjs';
 
@@ -69,6 +70,10 @@ const userSchema = new mongoose.Schema(
        POST /api/payments/consume-free-template. */
     freeTemplateUsedAt: { type: Date, default: null },
     freeTemplateUsedId: { type: String, trim: true, default: null },
+    googleId: { type: String, select: false },
+    avatar: { type: String, default: null },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );
@@ -91,11 +96,19 @@ userSchema.methods.hasPasswordChangedAfter = function hasPasswordChangedAfter(ia
   return Math.floor(this.passwordChangedAt.getTime() / 1000) > iatSeconds;
 };
 
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour validity
+  return resetToken;
+};
+
 userSchema.methods.toPublic = function toPublic() {
   return {
     id: this._id,
     name: this.name,
     email: this.email,
+    avatar: this.avatar,
     phone: this.phone,
     role: this.role,
     profile: {

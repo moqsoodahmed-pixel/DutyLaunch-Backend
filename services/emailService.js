@@ -1,9 +1,65 @@
+import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger.js';
 
 /**
  * DutyLaunch Transactional Email Service.
- * Formats responsive HTML email notifications for Resume Build orders and milestones.
+ * Formats responsive HTML email notifications and dispatches via SMTP / Gmail.
  */
+
+let transporter = null;
+
+function getTransporter() {
+  if (transporter) return transporter;
+
+  const host = process.env.SMTP_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const secure = port === 465;
+
+  if (host && user && pass) {
+    try {
+      transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+      });
+      logger.info(`[Email] SMTP transporter configured with host: ${host}:${port}`);
+    } catch (err) {
+      logger.error(`[Email] Failed to create SMTP transporter: ${err.message}`);
+    }
+  }
+  return transporter;
+}
+
+async function dispatchEmail({ to, subject, html }) {
+  const mailTransporter = getTransporter();
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || 'no-reply@dutylaunch.com';
+
+  if (!mailTransporter) {
+    logger.warn(`[Email] SMTP is not configured. Email to ${to} ("${subject}") preview logged.`);
+    return { sent: false, delivered: false, reason: 'SMTP_NOT_CONFIGURED' };
+  }
+
+  try {
+    const info = await mailTransporter.sendMail({
+      from: `DutyLaunch <${from}>`,
+      to,
+      subject,
+      html,
+    });
+    logger.info(`[Email] Dispatched successfully to ${to} (Message ID: ${info.messageId})`);
+    return { sent: true, delivered: true, messageId: info.messageId };
+  } catch (err) {
+    logger.error(`[Email] Delivery to ${to} failed: ${err.message}`);
+    return { sent: false, delivered: false, error: err.message };
+  }
+}
+
+function getBaseClientUrl() {
+  return (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim();
+}
 
 function baseLayout({ title, body, actionText, actionUrl }) {
   return `
@@ -48,6 +104,34 @@ function baseLayout({ title, body, actionText, actionUrl }) {
 }
 
 export const emailService = {
+  async sendPasswordResetEmail({ user, resetUrl }) {
+    const subject = 'Reset Your DutyLaunch Password';
+    const html = baseLayout({
+      title: 'Reset Your DutyLaunch Account Password',
+      body: `
+        <p>Hi ${user?.name || 'Valued Member'},</p>
+        <p>We received a request to reset the password for your DutyLaunch account associated with <strong>${user?.email}</strong>.</p>
+        <p>Click the button below to choose a new password. This reset link is active for <strong>60 minutes</strong>.</p>
+        <div class="order-box" style="border-left-color: #0284c7; background: #f8fafc;">
+          <p style="margin: 0; font-size: 13px; color: #475569;">
+            If the button below does not work, copy and paste this link into your browser:
+            <br />
+            <a href="${resetUrl}" style="color: #0284c7; word-break: break-all;">${resetUrl}</a>
+          </p>
+        </div>
+        <p style="font-size: 13px; color: #64748b; margin-top: 16px;">
+          If you did not request this password reset, please disregard this email. Your current password remains secure.
+        </p>
+      `,
+      actionText: 'Reset My Password',
+      actionUrl: resetUrl,
+    });
+
+    const dispatchResult = await dispatchEmail({ to: user?.email, subject, html });
+    logger.info(`[Email] Password reset dispatched to ${user?.email} (resetUrl: ${resetUrl})`);
+    return { ...dispatchResult, subject, html, resetUrl };
+  },
+
   async sendPurchaseConfirmationEmail({ user, order }) {
     const subject = `Purchase Confirmed: ${order.packageName} (Order #${order.orderNumber})`;
     const html = baseLayout({
