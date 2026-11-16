@@ -147,8 +147,8 @@ export const createResumeOrder = asyncHandler(async (req, res) => {
   const savedResume = resumeFile ? await persistUploadedFile(resumeFile) : null;
   const savedCv = cvFile ? await persistUploadedFile(cvFile) : null;
 
-  // 3. Expected delivery: 24 hours from now (within a day)
-  const expectedDeliveryDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // 3. Expected delivery: 2-3 days from now
+  const expectedDeliveryDate = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
   // 4. File History
   const fileHistory = [];
@@ -203,7 +203,7 @@ export const createResumeOrder = asyncHandler(async (req, res) => {
     purchaseDate: payment.paidAt || new Date(),
     status: 'pending',
     turnaroundNotice:
-      'Your resume and CV will be professionally crafted and delivered within a day.',
+      'Your resume and CV will be professionally crafted and delivered in 2–3 days.',
     expectedDeliveryDate,
     userInstructions: userInstructions || '',
     targetRole: targetRole || '',
@@ -222,7 +222,7 @@ export const createResumeOrder = asyncHandler(async (req, res) => {
     userId: req.user._id,
     type: 'order_created',
     title: 'Resume Build Request Received',
-    message: `Order #${order.orderNumber} is under review. Turnaround: within a day.`,
+    message: `Order #${order.orderNumber} is under review. Turnaround: 2–3 days.`,
     link: '/my-resumes',
     metadata: { orderId: order._id, orderNumber: order.orderNumber },
   });

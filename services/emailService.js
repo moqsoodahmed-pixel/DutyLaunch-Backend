@@ -77,7 +77,7 @@ export const emailService = {
         <p>Hi ${user?.name || 'Valued Candidate'},</p>
         <p>We have successfully received your existing documents and custom career instructions for order <strong>#${order.orderNumber}</strong>.</p>
         <div class="order-box">
-          <p style="margin: 0 0 6px;"><strong>Expected Turnaround:</strong> Within a day</p>
+          <p style="margin: 0 0 6px;"><strong>Expected Turnaround:</strong> Delivery in 2–3 Days</p>
           <p style="margin: 0 0 6px;"><strong>Target Role:</strong> ${order.targetRole || 'As specified in profile'}</p>
           <p style="margin: 0;"><strong>Current Status:</strong> Pending Review & Assignment</p>
         </div>
@@ -113,7 +113,7 @@ export const emailService = {
       body: `
         <p>Hi ${user?.name || 'Valued Candidate'},</p>
         <p>Our resume writing team has begun actively drafting and optimizing your CV for order <strong>#${order.orderNumber}</strong>.</p>
-        <p>Expected delivery: <strong>${order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'Within a day'}</strong>.</p>
+        <p>Expected delivery: <strong>${order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'Delivery in 2–3 Days'}</strong>.</p>
       `,
       actionText: 'View Dashboard',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,

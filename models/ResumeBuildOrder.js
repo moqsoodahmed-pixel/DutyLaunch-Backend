@@ -116,7 +116,7 @@ const resumeBuildOrderSchema = new mongoose.Schema(
     },
     turnaroundNotice: {
       type: String,
-      default: 'Within a day our executive career specialists will craft and refine your CV.',
+      default: 'In 2–3 days our executive career specialists will craft and refine your CV.',
     },
     expectedDeliveryDate: { type: Date },
     completionDate: { type: Date },

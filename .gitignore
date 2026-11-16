@@ -34,5 +34,8 @@ uploads/*
 # Testing, Scratch & Verification capture scripts
 scripts/capture*.mjs
 scripts/checkFlightVector.mjs
-scripts/testThree.mjs
+scripts/test*.mjs
+scripts/debug*.mjs
+scripts/sync*.mjs
+scripts/verify*.mjs
 scratch/
