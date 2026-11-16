@@ -22,6 +22,7 @@ const COLLECTIONS = [
 ];
 
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@dutylaunch.com').toLowerCase().trim();
+const PRESERVED_ADMIN_EMAILS = [ADMIN_EMAIL, 'moqsood@launcherdesk.com'];
 
 async function destroy() {
   await Promise.all(COLLECTIONS.map((Model) => Model.deleteMany({})));
@@ -29,8 +30,8 @@ async function destroy() {
   // known Mongoose 8.6.x regression where a schema field with `lowercase: true`
   // (User.email) gets its setter mis-applied to the whole `{ $ne: ... }`
   // operator object during query casting, throwing a CastError.
-  await User.collection.deleteMany({ email: { $ne: ADMIN_EMAIL } });
-  console.log('✔ Collections cleared (the seed admin account was kept)');
+  await User.collection.deleteMany({ email: { $nin: PRESERVED_ADMIN_EMAILS } });
+  console.log('✔ Collections cleared (the seed admin accounts were kept)');
 }
 
 async function seed() {
@@ -51,6 +52,20 @@ async function seed() {
     console.log(`✔ Admin created → ${adminEmail}`);
   } else {
     console.log(`• Admin already present → ${adminEmail}`);
+  }
+
+  /* ---- super admin moqsood ---- */
+  let moqsoodAdmin = await User.findOne({ email: 'moqsood@launcherdesk.com' });
+  if (!moqsoodAdmin) {
+    moqsoodAdmin = await User.create({
+      name: 'Moqsood Ahmed',
+      email: 'moqsood@launcherdesk.com',
+      password: process.env.MOQSOOD_ADMIN_PASSWORD || 'Moqsood@2026',
+      role: 'super_admin',
+    });
+    console.log(`✔ Super Admin created → moqsood@launcherdesk.com`);
+  } else {
+    console.log(`• Super Admin already present → moqsood@launcherdesk.com`);
   }
 
   /* ---- pricing ---- */
