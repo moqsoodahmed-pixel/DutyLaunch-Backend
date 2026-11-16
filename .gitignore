@@ -38,4 +38,9 @@ scripts/test*.mjs
 scripts/debug*.mjs
 scripts/sync*.mjs
 scripts/verify*.mjs
+scripts/audit*.mjs
+scripts/checkAdminApi.mjs
+scripts/checkDbOrders.mjs
+scripts/inspectPackages.mjs
+scripts/openModalTest.mjs
 scratch/

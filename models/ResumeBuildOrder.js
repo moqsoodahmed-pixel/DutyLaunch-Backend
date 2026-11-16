@@ -124,6 +124,7 @@ const resumeBuildOrderSchema = new mongoose.Schema(
     userInstructions: { type: String, trim: true, maxlength: 5000 },
     targetRole: { type: String, trim: true, maxlength: 200 },
     targetIndustry: { type: String, trim: true, maxlength: 200 },
+    addons: [{ type: String, trim: true }],
 
     originalResume: { type: fileSchema, default: null },
     originalCv: { type: fileSchema, default: null },

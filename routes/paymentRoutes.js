@@ -15,6 +15,7 @@ const razorpayId = (prefix) => z.string().trim().regex(new RegExp(`^${prefix}_[A
 const createOrderSchema = z.object({
   itemType: z.enum(PAYMENT_ITEM_TYPES),
   itemId: z.union([objectId, z.string().trim().regex(/^[a-z0-9-]{2,40}$/, 'Invalid id')]),
+  addonIds: z.array(z.string().trim()).optional(),
 });
 
 const verifySchema = z.object({

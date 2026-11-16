@@ -242,10 +242,35 @@ export const consumeFreeTemplate = asyncHandler(async (req, res) => {
 });
 
 /** POST /api/payments/orders  { itemType, itemId } */
+export const KNOWN_CAREER_ADDONS = {
+  portfolio: { id: 'portfolio', name: 'Visual Executive Portfolio', price: 999 },
+  webPortfolio: { id: 'webPortfolio', name: 'Live Web Portfolio', price: 1999 },
+  mockInterview: { id: 'mockInterview', name: '1-on-1 Mock Interview Session', price: 699 },
+  expressService: { id: 'expressService', name: 'Express Fast Turnaround', price: 499 },
+};
+
 export const createOrder = asyncHandler(async (req, res) => {
-  const { itemType, itemId } = req.body;
+  const { itemType, itemId, addonIds = [] } = req.body;
   const item = await resolveItem(itemType, itemId, req.user);
-  const breakdown = priceBreakdown(item.price);
+
+  let addonTotal = 0;
+  const attachedAddons = [];
+  if (Array.isArray(addonIds) && addonIds.length > 0) {
+    for (const aId of addonIds) {
+      const found = KNOWN_CAREER_ADDONS[aId];
+      if (found) {
+        addonTotal += found.price;
+        attachedAddons.push(found.name);
+      }
+    }
+  }
+
+  const finalItemPrice = item.price + addonTotal;
+  const finalItemName = attachedAddons.length > 0
+    ? `${item.name} (+ ${attachedAddons.join(', ')})`
+    : item.name;
+
+  const breakdown = priceBreakdown(finalItemPrice);
   if (breakdown.amount < 100) throw ApiError.badRequest('The amount is below the minimum the payment gateway accepts.');
 
   // Razorpay receipts are at most 40 characters.
@@ -254,7 +279,13 @@ export const createOrder = asyncHandler(async (req, res) => {
     amount: breakdown.amount,
     currency: item.currency,
     receipt,
-    notes: { userId: String(req.user._id), itemType, itemId: String(item.key || itemId), item: item.name.slice(0, 200) },
+    notes: {
+      userId: String(req.user._id),
+      itemType,
+      itemId: String(item.key || itemId),
+      item: finalItemName.slice(0, 200),
+      addons: addonIds.join(','),
+    },
   });
 
   let feeConfigSnapshot;
@@ -284,7 +315,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     partner: item.partner || undefined,
     itemType,
     ...(item.key ? { itemKey: item.key } : { itemId }),
-    itemName: item.name,
+    itemName: finalItemName,
     ...breakdown,
     feeConfigSnapshot,
     currency: item.currency,

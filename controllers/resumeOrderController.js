@@ -189,6 +189,16 @@ export const createResumeOrder = asyncHandler(async (req, res) => {
     },
   ];
 
+  // Extract addons from payment notes or request body
+  let addons = [];
+  if (Array.isArray(req.body.addons)) {
+    addons = req.body.addons;
+  } else if (typeof req.body.addons === 'string') {
+    addons = req.body.addons.split(',').map((s) => s.trim()).filter(Boolean);
+  } else if (payment?.notes?.addons) {
+    addons = payment.notes.addons.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
   const order = await ResumeBuildOrder.create({
     orderNumber,
     user: req.user._id,
@@ -208,6 +218,7 @@ export const createResumeOrder = asyncHandler(async (req, res) => {
     userInstructions: userInstructions || '',
     targetRole: targetRole || '',
     targetIndustry: targetIndustry || '',
+    addons,
     originalResume: savedResume,
     originalCv: savedCv,
     fileHistory,
