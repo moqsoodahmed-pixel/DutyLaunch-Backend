@@ -23,6 +23,7 @@ import settlementRoutes from './settlementRoutes.js';
 import uploadRoutes from './uploadRoutes.js';
 import resumeOrderRoutes from './resumeOrderRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
+import cmsRoutes from './cmsRoutes.js';
 
 const router = Router();
 
@@ -55,5 +56,6 @@ router.use('/settlements', settlementRoutes);
 router.use('/uploads', uploadRoutes);
 router.use('/resume-orders', resumeOrderRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/cms', cmsRoutes);
 
 export default router;
