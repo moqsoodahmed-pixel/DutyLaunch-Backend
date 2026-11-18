@@ -39,6 +39,7 @@ export const registerSchema = z.object({
       size: z.enum(['1-10', '11-50', '51-200', '201-1000', '1000+']).optional(),
     })
     .optional(),
+  consent: consentField,
 });
 
 export const loginSchema = z.object({ email, password: z.string().min(1, 'Enter your password') });
@@ -62,6 +63,11 @@ export const googleAuthSchema = z.object({
   name: z.string().optional(),
   avatar: z.string().optional(),
   googleId: z.string().optional(),
+  // Only meaningful when this call creates a new account (an existing user
+  // signing in again already consented at registration). Not required here
+  // via consentField, since the frontend must show the checkbox before the
+  // very first Google sign-in the same way it does for the password form.
+  consent: z.any().optional(),
 });
 
 export const updateProfileSchema = z.object({

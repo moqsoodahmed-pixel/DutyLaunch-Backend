@@ -64,6 +64,8 @@ const userSchema = new mongoose.Schema(
     savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date },
+    /* DPDP Act 2023: consent given at account creation (Terms & Privacy Policy). */
+    registrationConsent: { type: consentRecordSchema, default: undefined },
     /* Resume Builder: the 3 free templates (see config/templates.js) can be
        completed once per account; after that, any further resume — free
        template or paid — requires payment. Set once, server-side only, by

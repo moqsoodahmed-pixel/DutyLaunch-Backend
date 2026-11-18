@@ -55,6 +55,7 @@ export function errorHandler(err, req, res, next) {
     success: false,
     message,
     errors,
+    ...(err.data !== undefined ? { data: err.data } : {}),
     ...(env.isProd ? {} : { stack: err.stack }),
   });
 }

@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import mongoose from 'mongoose';
+import crypto from 'node:crypto';
 import { env } from '../config/env.js';
 import { connectDB, disconnectDB } from '../config/db.js';
 import {
@@ -24,6 +25,24 @@ const COLLECTIONS = [
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@dutylaunch.com').toLowerCase().trim();
 const PRESERVED_ADMIN_EMAILS = [ADMIN_EMAIL, 'moqsood@launcherdesk.com'];
 
+/**
+ * Never fall back to a fixed, guessable password for a seeded admin account.
+ * If the env var isn't set, generate a random one for this run only and
+ * print it once — the operator must capture and change it, instead of a
+ * known string (previously 'ChangeMe123' / 'Moqsood@2026') sitting in
+ * source control forever as a standing admin-account credential.
+ */
+function resolveSeedPassword(envVarName, label) {
+  const fromEnv = process.env[envVarName];
+  if (fromEnv) return fromEnv;
+  const generated = crypto.randomBytes(12).toString('base64url') + 'Aa1!';
+  console.warn(
+    `⚠ ${envVarName} is not set. Generated a one-time random password for ${label}: ${generated}\n` +
+      `  Save it now and set ${envVarName} in your .env for future runs — it will not be shown again.`
+  );
+  return generated;
+}
+
 async function destroy() {
   await Promise.all(COLLECTIONS.map((Model) => Model.deleteMany({})));
   // Goes through the raw driver collection, not the Mongoose model, to avoid a
@@ -39,7 +58,7 @@ async function seed() {
 
   /* ---- admin ---- */
   const adminEmail = ADMIN_EMAIL;
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123';
+  const adminPassword = resolveSeedPassword('SEED_ADMIN_PASSWORD', adminEmail);
 
   let admin = await User.findOne({ email: adminEmail });
   if (!admin) {
@@ -60,7 +79,7 @@ async function seed() {
     moqsoodAdmin = await User.create({
       name: 'Moqsood Ahmed',
       email: 'moqsood@launcherdesk.com',
-      password: process.env.MOQSOOD_ADMIN_PASSWORD || 'Moqsood@2026',
+      password: resolveSeedPassword('MOQSOOD_ADMIN_PASSWORD', 'moqsood@launcherdesk.com'),
       role: 'super_admin',
     });
     console.log(`✔ Super Admin created → moqsood@launcherdesk.com`);

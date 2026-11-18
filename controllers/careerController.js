@@ -136,10 +136,10 @@ export async function analyzeWithMagicalApi({ buffer, mimetype, baseUrl }) {
       }
       if (res.status === 200) {
         const result = normaliseMagical(body);
-        console.log('[MagicalAPI] score received:', result?.score);
+        logger.info(`[MagicalAPI] score received: ${result?.score}`);
         return result;
       }
-      console.warn(`[MagicalAPI] HTTP ${res.status}:`, text.slice(0, 300));
+      logger.warn(`[MagicalAPI] HTTP ${res.status}: ${text.slice(0, 300)}`);
       return null;
     }
     console.warn('[MagicalAPI] timed out after 60s, using internal engine.');
@@ -329,7 +329,7 @@ export const analyze = asyncHandler(async (req, res) => {
     const fresh = await CareerProfile.findOne({ user: req.user._id }).select('lastMagicalScore').lean();
     magical = fresh?.lastMagicalScore || null;
   }
-  console.log('[MagicalAPI] analyze using', magical ? `MagicalAPI score ${magical.score}` : 'internal engine');
+  logger.info(`[MagicalAPI] analyze using ${magical ? `MagicalAPI score ${magical.score}` : 'internal engine'}`);
   if (magical && typeof magical.score === 'number') {
     analysis.health.score = magical.score;
     analysis.health.band = magical.score >= 85

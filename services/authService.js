@@ -1,11 +1,30 @@
 import crypto from 'node:crypto';
 import { User } from '../models/User.js';
+import { AuthEvent } from '../models/AuthEvent.js';
 import { ApiError } from '../utils/ApiError.js';
 import { signToken } from '../utils/token.js';
+import { consentRecord, isConsentGiven, CONSENT_REQUIRED_MESSAGE } from '../utils/consent.js';
 import { emailService } from './emailService.js';
-import { logger } from '../utils/logger.js';
+import { logger, maskEmail } from '../utils/logger.js';
 
-export async function registerUser({ name, email, phone, password, role = 'user', company }) {
+/** Append-only audit trail (DPDP Act 2023 + security). Never blocks the auth flow. */
+async function recordAuthEvent(req, { user, email, type, method = 'password' }) {
+  try {
+    await AuthEvent.create({
+      user: user?._id,
+      email: (email || user?.email || '').toLowerCase(),
+      type,
+      method,
+      ip: req?.ip,
+      userAgent: String(req?.get?.('user-agent') || '').slice(0, 300),
+    });
+  } catch (err) {
+    logger.warn(`[Auth] Failed to record ${type} audit event: ${err.message}`);
+  }
+}
+
+export async function registerUser(req) {
+  const { name, email, phone, password, role = 'user', company } = req.body;
   const exists = await User.findOne({ email });
   if (exists) throw ApiError.conflict('An account with that email already exists');
 
@@ -22,20 +41,28 @@ export async function registerUser({ name, email, phone, password, role = 'user'
     password,
     role: safeRole,
     ...(safeRole === 'employer' && company ? { company } : {}),
+    // DPDP Act 2023: the checkbox is UI-only unless the server also records
+    // and enforces it — `consent` is required by registerSchema.
+    registrationConsent: consentRecord(req),
   });
+
+  await recordAuthEvent(req, { user, type: 'register' });
 
   return { user, token: signToken({ sub: user._id, role: user.role }) };
 }
 
-export async function loginUser({ email, password }) {
+export async function loginUser(req) {
+  const { email, password } = req.body;
   const user = await User.findOne({ email }).select('+password');
   if (!user || !(await user.comparePassword(password))) {
+    await recordAuthEvent(req, { email, type: 'login_failed' });
     throw ApiError.unauthorized('Email or password is incorrect');
   }
   if (!user.isActive) throw ApiError.forbidden('This account has been deactivated');
 
   user.lastLoginAt = new Date();
   await user.save({ validateBeforeSave: false });
+  await recordAuthEvent(req, { user, type: 'login' });
 
   return { user, token: signToken({ sub: user._id, role: user.role }) };
 }
@@ -59,7 +86,7 @@ export async function requestPasswordReset(email) {
 
   // Security: always return identical success message to prevent user enumeration
   if (!user || !user.isActive) {
-    logger.info(`[Auth] Password reset requested for non-existent or inactive email: ${normalizedEmail}`);
+    logger.info(`[Auth] Password reset requested for non-existent or inactive email: ${maskEmail(normalizedEmail)}`);
     return {
       message: 'If that email is registered, instructions to reset your password have been sent.',
       emailDelivery: false,
@@ -72,7 +99,9 @@ export async function requestPasswordReset(email) {
   const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim();
   const resetUrl = `${clientUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
 
-  logger.info(`[Auth] Generated password reset link for ${user.email}: ${resetUrl}`);
+  // Never log the reset URL itself — it carries the raw, unhashed token and
+  // is a bearer credential for a one-hour account takeover window.
+  logger.info(`[Auth] Generated password reset link for ${maskEmail(user.email)}`);
 
   const emailResult = await emailService.sendPasswordResetEmail({ user, resetUrl });
 
@@ -104,7 +133,7 @@ export async function resetPasswordWithToken({ token, newPassword }) {
   user.passwordResetExpires = undefined;
   await user.save();
 
-  logger.info(`[Auth] Password successfully reset for user ${user.email}`);
+  logger.info(`[Auth] Password successfully reset for user ${maskEmail(user.email)}`);
 
   return {
     user,
@@ -112,7 +141,8 @@ export async function resetPasswordWithToken({ token, newPassword }) {
   };
 }
 
-export async function loginWithGoogle({ credential, email, name, avatar, googleId }) {
+export async function loginWithGoogle(req) {
+  const { credential, email, name, avatar, googleId } = req.body;
   let gEmail = email;
   let gName = name;
   let gAvatar = avatar;
@@ -149,8 +179,27 @@ export async function loginWithGoogle({ credential, email, name, avatar, googleI
     if (gAvatar && !user.avatar) user.avatar = gAvatar;
     user.lastLoginAt = new Date();
     await user.save({ validateBeforeSave: false });
+    await recordAuthEvent(req, { user, type: 'login', method: 'google' });
   } else {
-    // Register new user via Google
+    // No account exists for this Google identity — DPDP Act 2023 requires
+    // a Data Principal's explicit, specific consent before we process their
+    // personal data, and that has to come from the person themselves, not
+    // be assumed because a Google popup succeeded. Block account creation
+    // here and hand the frontend back the Google profile it already fetched
+    // (name/email/avatar/googleId) so it can show a real consent screen and
+    // retry this same call with consent:true, without reopening the OAuth
+    // popup.
+    if (!isConsentGiven(req.body?.consent)) {
+      throw ApiError.preconditionRequired(
+        CONSENT_REQUIRED_MESSAGE,
+        [{ field: 'consent', message: CONSENT_REQUIRED_MESSAGE }],
+        {
+          requiresConsent: true,
+          profile: { email: normalizedEmail, name: gName || '', avatar: gAvatar || null, googleId: gId || null },
+        }
+      );
+    }
+
     const randomPassword = crypto.randomBytes(24).toString('hex') + 'Aa1!';
     user = await User.create({
       name: gName || 'Candidate',
@@ -159,8 +208,10 @@ export async function loginWithGoogle({ credential, email, name, avatar, googleI
       avatar: gAvatar || undefined,
       password: randomPassword,
       role: 'user',
+      registrationConsent: consentRecord(req),
     });
-    logger.info(`[Auth] New account created via Google Sign-In for ${normalizedEmail}`);
+    logger.info(`[Auth] New account created via Google Sign-In for ${maskEmail(normalizedEmail)}`);
+    await recordAuthEvent(req, { user, type: 'register', method: 'google' });
   }
 
   return {

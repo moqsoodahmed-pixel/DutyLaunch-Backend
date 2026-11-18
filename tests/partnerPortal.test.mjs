@@ -33,6 +33,7 @@ test('Registration validator accepts partner role along with user and employer',
     email: 'john@example.com',
     password: 'Password123',
     role: 'user',
+    consent: true,
   });
   assert.equal(resultCandidate.success, true);
 
@@ -41,6 +42,7 @@ test('Registration validator accepts partner role along with user and employer',
     email: 'dean@university.edu',
     password: 'Password123',
     role: 'partner',
+    consent: true,
   });
   assert.equal(resultPartner.success, true);
 
@@ -49,8 +51,17 @@ test('Registration validator accepts partner role along with user and employer',
     email: 'dean@institute.edu',
     password: 'Password123',
     role: 'institute',
+    consent: true,
   });
   assert.equal(resultInstitute.success, true);
+
+  const resultNoConsent = registerSchema.safeParse({
+    name: 'No Consent',
+    email: 'noconsent@example.com',
+    password: 'Password123',
+    role: 'user',
+  });
+  assert.equal(resultNoConsent.success, false, 'DPDP Act 2023: registration must require consent');
 });
 
 test('Delivery formats support all four required modes for programmes and courses', () => {

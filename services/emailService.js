@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { logger } from '../utils/logger.js';
+import { logger, maskEmail } from '../utils/logger.js';
 
 /**
  * DutyLaunch Transactional Email Service.
@@ -38,7 +38,7 @@ async function dispatchEmail({ to, subject, html }) {
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || 'no-reply@dutylaunch.com';
 
   if (!mailTransporter) {
-    logger.warn(`[Email] SMTP is not configured. Email to ${to} ("${subject}") preview logged.`);
+    logger.warn(`[Email] SMTP is not configured. Email to ${maskEmail(to)} ("${subject}") preview logged.`);
     return { sent: false, delivered: false, reason: 'SMTP_NOT_CONFIGURED' };
   }
 
@@ -49,10 +49,10 @@ async function dispatchEmail({ to, subject, html }) {
       subject,
       html,
     });
-    logger.info(`[Email] Dispatched successfully to ${to} (Message ID: ${info.messageId})`);
+    logger.info(`[Email] Dispatched successfully to ${maskEmail(to)} (Message ID: ${info.messageId})`);
     return { sent: true, delivered: true, messageId: info.messageId };
   } catch (err) {
-    logger.error(`[Email] Delivery to ${to} failed: ${err.message}`);
+    logger.error(`[Email] Delivery to ${maskEmail(to)} failed: ${err.message}`);
     return { sent: false, delivered: false, error: err.message };
   }
 }
@@ -128,7 +128,8 @@ export const emailService = {
     });
 
     const dispatchResult = await dispatchEmail({ to: user?.email, subject, html });
-    logger.info(`[Email] Password reset dispatched to ${user?.email} (resetUrl: ${resetUrl})`);
+    // Never log resetUrl — it carries the raw, unhashed reset token.
+    logger.info(`[Email] Password reset dispatched to ${maskEmail(user?.email)}`);
     return { ...dispatchResult, subject, html, resetUrl };
   },
 
@@ -149,7 +150,7 @@ export const emailService = {
       actionText: 'View Order Status',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] Purchase confirmation sent to ${user?.email} for order ${order.orderNumber}`);
+    logger.info(`[Email] Purchase confirmation sent to ${maskEmail(user?.email)} for order ${order.orderNumber}`);
     return { sent: true, subject, html };
   },
 
@@ -170,7 +171,7 @@ export const emailService = {
       actionText: 'Track Order',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] Request received email sent to ${user?.email} for order ${order.orderNumber}`);
+    logger.info(`[Email] Request received email sent to ${maskEmail(user?.email)} for order ${order.orderNumber}`);
     return { sent: true, subject, html };
   },
 
@@ -186,7 +187,7 @@ export const emailService = {
       actionText: 'View Activity Timeline',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] Request assigned email sent to ${user?.email}`);
+    logger.info(`[Email] Request assigned email sent to ${maskEmail(user?.email)}`);
     return { sent: true, subject, html };
   },
 
@@ -202,7 +203,7 @@ export const emailService = {
       actionText: 'View Dashboard',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] Work started email sent to ${user?.email}`);
+    logger.info(`[Email] Work started email sent to ${maskEmail(user?.email)}`);
     return { sent: true, subject, html };
   },
 
@@ -221,7 +222,7 @@ export const emailService = {
       actionText: 'Open Dashboard',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] More info required sent to ${user?.email}`);
+    logger.info(`[Email] More info required sent to ${maskEmail(user?.email)}`);
     return { sent: true, subject, html };
   },
 
@@ -242,7 +243,7 @@ export const emailService = {
       actionText: 'Download Your Completed Files',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/my-resumes`,
     });
-    logger.info(`[Email] Completed email sent to ${user?.email} for order ${order.orderNumber}`);
+    logger.info(`[Email] Completed email sent to ${maskEmail(user?.email)} for order ${order.orderNumber}`);
     return { sent: true, subject, html };
   },
 
@@ -261,7 +262,7 @@ export const emailService = {
       actionText: 'Contact Support',
       actionUrl: `${process.env.CLIENT_URL || 'http://localhost:5173'}/contact`,
     });
-    logger.info(`[Email] Rejected email sent to ${user?.email}`);
+    logger.info(`[Email] Rejected email sent to ${maskEmail(user?.email)}`);
     return { sent: true, subject, html };
   },
 
