@@ -342,11 +342,26 @@ const SEED_CMS_ITEMS = [
 async function ensureSeeded() {
   const count = await CmsPricingItem.countDocuments();
   if (count === 0) {
-    await CmsPricingItem.insertMany(SEED_CMS_ITEMS);
+    try {
+      await CmsPricingItem.insertMany(SEED_CMS_ITEMS, { ordered: false });
+    } catch (err) {
+      // Two requests can both see count===0 and race to seed at once
+      // (e.g. right after a fresh deploy) — a duplicate-key error here just
+      // means the other request won, not a real failure.
+      if (err?.code !== 11000) throw err;
+    }
   }
   let config = await CmsGlobalConfig.findOne();
   if (!config) {
-    config = await CmsGlobalConfig.create({});
+    try {
+      config = await CmsGlobalConfig.create({});
+    } catch (err) {
+      if (err?.code === 11000) {
+        config = await CmsGlobalConfig.findOne();
+      } else {
+        throw err;
+      }
+    }
   }
   return config;
 }

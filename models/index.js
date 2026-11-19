@@ -24,3 +24,4 @@ export { Settlement, SETTLEMENT_STATUS } from './Settlement.js';
 export { UploadedFile } from './UploadedFile.js';
 export { ResumeBuildOrder, RESUME_ORDER_STATUSES, generateOrderNumber } from './ResumeBuildOrder.js';
 export { Notification, NOTIFICATION_TYPES } from './Notification.js';
+export { CmsPricingItem, CMS_CATEGORIES } from './CmsPricingItem.js';

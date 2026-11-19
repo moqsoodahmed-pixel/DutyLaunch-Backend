@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
-import { CVPackage, Course, EducationProgram, Enrolment, FeeConfig, Payment } from '../models/index.js';
+import { CVPackage, CmsPricingItem, Course, EducationProgram, Enrolment, FeeConfig, Payment } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -117,7 +117,16 @@ async function resolveItem(itemType, itemId, user) {
   }
   if (!mongoose.isValidObjectId(itemId)) throw ApiError.badRequest('Invalid item.');
   if (itemType === 'cv-package') {
-    const pkg = await CVPackage.findOne({ _id: itemId, status: 'published' }).lean();
+    // Resume packages shown to candidates are now managed through the CMS
+    // Pricing dashboard (models/CmsPricingItem.js), not the older
+    // CVPackage collection — check both so a purchase of either still
+    // resolves. Whichever one actually has this _id wins; price always
+    // comes from here, never from the client.
+    let pkg = await CVPackage.findOne({ _id: itemId, status: 'published' }).lean();
+    if (!pkg) {
+      const cmsItem = await CmsPricingItem.findOne({ _id: itemId, status: 'published' }).lean();
+      if (cmsItem) pkg = { name: cmsItem.name, price: cmsItem.price, currency: cmsItem.currency || 'INR' };
+    }
     if (!pkg) throw ApiError.notFound('This CV bundle is no longer available.');
     if (!(pkg.price > 0)) throw ApiError.badRequest('This CV bundle does not have a price set yet.');
     return { name: `${pkg.name} CV bundle`, price: pkg.price, currency: pkg.currency || 'INR' };
