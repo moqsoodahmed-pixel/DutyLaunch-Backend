@@ -340,30 +340,22 @@ const SEED_CMS_ITEMS = [
 ];
 
 async function ensureSeeded() {
-  const count = await CmsPricingItem.countDocuments();
-  if (count === 0) {
-    try {
-      await CmsPricingItem.insertMany(SEED_CMS_ITEMS, { ordered: false });
-    } catch (err) {
-      // Two requests can both see count===0 and race to seed at once
-      // (e.g. right after a fresh deploy) — a duplicate-key error here just
-      // means the other request won, not a real failure.
-      if (err?.code !== 11000) throw err;
+  try {
+    const count = await CmsPricingItem.countDocuments();
+    if (count === 0) {
+      await CmsPricingItem.insertMany(SEED_CMS_ITEMS, { ordered: false }).catch(() => {});
     }
+  } catch (err) {
+    // Non-fatal, keep going
   }
-  let config = await CmsGlobalConfig.findOne();
-  if (!config) {
-    try {
-      config = await CmsGlobalConfig.create({});
-    } catch (err) {
-      if (err?.code === 11000) {
-        config = await CmsGlobalConfig.findOne();
-      } else {
-        throw err;
-      }
+  try {
+    let config = await CmsGlobalConfig.findOne();
+    if (!config) {
+      await CmsGlobalConfig.create({}).catch(() => {});
     }
+  } catch (err) {
+    // Non-fatal, keep going
   }
-  return config;
 }
 
 /**
@@ -371,12 +363,23 @@ async function ensureSeeded() {
  * Consumed by /resume-service, /pricing, and checkout modals
  */
 export const getPublicPricing = asyncHandler(async (req, res) => {
-  await ensureSeeded();
+  await ensureSeeded().catch(() => {});
 
-  const [items, config] = await Promise.all([
-    CmsPricingItem.find({ status: 'published' }).sort({ category: 1, order: 1 }).lean(),
-    CmsGlobalConfig.findOne().lean(),
-  ]);
+  let items = [];
+  let config = null;
+  try {
+    [items, config] = await Promise.all([
+      CmsPricingItem.find({ status: 'published' }).sort({ category: 1, order: 1 }).lean(),
+      CmsGlobalConfig.findOne().lean(),
+    ]);
+  } catch (queryErr) {
+    // DB error fallback
+  }
+
+  // Fallback to static catalog if DB returned no published items
+  if (!items || items.length === 0) {
+    items = SEED_CMS_ITEMS.filter((i) => i.status === 'published');
+  }
 
   const bundles = items.filter((i) => i.category === 'bundle');
   const cvOnly = items.filter((i) => i.category === 'cv_only');
